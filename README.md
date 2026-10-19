@@ -2,17 +2,40 @@
 
 「台股技術面選股晨報」的程式碼庫。原本程式以 `pipeline/*.txt` 的形式存放在晨報網頁
 artifact（`https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ`）的附檔裡，由四個排程每次取回執行；
-這個 repo 是搬遷的第一步：把程式納入 git 版本控制。
+現在程式的正本在這個 repo，網頁附檔是發布處。
 
 ## 搬遷狀態
 
 | 階段 | 內容 | 狀態 |
 | --- | --- | --- |
-| 1 | 程式原樣搬進 repo（逐位元組相同，SHA-256 與排程核准指紋一致） | ✅ 本次完成 |
-| 2 | 排程改從 GitHub 取程式（取代從 artifact 讀 `pipeline/*.txt`），指紋改用 `pipeline/SHA256SUMS` | 待辦 |
-| 3 | 改程式一律走 PR；artifact 只留資料（kdata.json、pool.json…）與網頁 | 待辦 |
+| 1 | 程式原樣搬進 repo（逐位元組相同，SHA-256 與排程核准指紋一致） | ✅ 完成 |
+| 2 | GitHub 當正本、網頁附檔當發布處；加上 `tools/check_sync.py` 核對兩邊一致 | ✅ 完成 |
 
-> 排程目前**仍然**從 artifact 讀程式，這次搬遷不影響明早的晨報。
+排程**不直接**從 GitHub 取程式：排程執行時 shell 不能連網，WebFetch 回傳的內容又會經過模型整理、
+無法保證逐位元組相同，指紋比對會失敗。所以排程維持從網頁附檔讀程式，GitHub 負責版本紀錄與審核。
+
+## 修改程式的流程
+
+1. **在 GitHub 改**：開分支修改 `pipeline/*.py`，同時更新 `pipeline/SHA256SUMS`
+   （`cd pipeline && sha256sum pipe.py pool.py inc.py adj.py weekly_pdf.py supertrend.py > SHA256SUMS`），開 PR 審核後合併。
+2. **發布到網頁**：把合併後的 `pipeline/X.py` 上傳成晨報網頁的 `pipeline/X.txt`
+   （只上傳有改的檔案，不動網頁其他附檔與畫面）。
+3. **更新排程指紋**：四個排程的說明裡寫死了核准指紋，把改過的檔案的新指紋換上去：
+
+   | 程式 | 用到的排程 |
+   | --- | --- |
+   | pipe.py、pool.py、inc.py | 夜間資料更新、晨報、週報 |
+   | adj.py | 夜間資料更新 |
+   | weekly_pdf.py、supertrend.py | 週報 |
+
+4. **核對**：用 Artifact read 取回網頁的 `pipeline/*.txt` 到某個目錄，執行
+   `python3 tools/check_sync.py 該目錄`，六支程式都顯示「一致」才算發布完成。
+
+步驟 2、3 要一起做、而且避開排程執行時段（07:29、13:51、21:51、週六 11:50 前後）；
+只做其中一個，下一次排程會因指紋不符而停止並推播通知。
+
+**不要直接改網頁上的 `pipeline/*.txt`**，否則 GitHub 的版本紀錄就不完整；
+`check_sync.py` 顯示「網頁附檔與 repo 不同」就代表兩邊已經分岔。
 
 ## 目錄
 
@@ -27,6 +50,8 @@ pipeline/
   universe.csv    股票池：台灣50、中型100、櫃買權值共 198 檔
   strategy.json   策略參數快照（2026-10-17，第 3 版 H7）；正式版本仍由週六排程寫回 artifact
   SHA256SUMS      使用者核准版本的程式指紋
+tools/
+  check_sync.py   核對網頁附檔與 repo 程式是否一致
 ```
 
 程式內檔名對應：artifact 上的 `pipeline/pipe.txt` = 這裡的 `pipeline/pipe.py`，其餘同理。
