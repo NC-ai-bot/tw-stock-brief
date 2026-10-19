@@ -1,0 +1,325 @@
+{
+ "version": 3,
+ "updated": "2026-10-17",
+ "params": {
+  "開始轉多": {
+   "ext20_max": 0.08,
+   "vr_max": 2.0,
+   "macd_req": true,
+   "ma20_up_req": false
+  },
+  "開始轉空": {
+   "ext20_min": -0.08,
+   "k_min": 20,
+   "macd_req": true,
+   "bull_max": 2
+  },
+  "強勢發動": {
+   "ext20_max": 0.12,
+   "vr_max": 99,
+   "lowvol_score": false
+  },
+  "跌到支撐": {
+   "k_min": 20,
+   "k_rising": true,
+   "red_req": true,
+   "vr_min": 1.0
+  }
+ },
+ "grid": {
+  "開始轉多": {
+   "ext20_max": [
+    0.06,
+    0.08,
+    0.1,
+    0.12
+   ],
+   "vr_max": [
+    1.5,
+    2.0,
+    3.0,
+    99
+   ],
+   "macd_req": [
+    true,
+    false
+   ],
+   "ma20_up_req": [
+    true,
+    false
+   ]
+  },
+  "開始轉空": {
+   "ext20_min": [
+    -0.06,
+    -0.08,
+    -0.1,
+    -1.0
+   ],
+   "k_min": [
+    10,
+    15,
+    20,
+    25,
+    30
+   ],
+   "macd_req": [
+    true,
+    false
+   ],
+   "bull_max": [
+    1,
+    2,
+    3,
+    5
+   ]
+  },
+  "強勢發動": {
+   "ext20_max": [
+    0.06,
+    0.08,
+    0.1,
+    0.12
+   ],
+   "vr_max": [
+    2,
+    3,
+    99
+   ],
+   "lowvol_score": [
+    true,
+    false
+   ]
+  },
+  "跌到支撐": {
+   "k_min": [
+    10,
+    15,
+    20,
+    25,
+    30
+   ],
+   "k_rising": [
+    true,
+    false
+   ],
+   "red_req": [
+    true,
+    false
+   ],
+   "vr_min": [
+    0.0,
+    1.0
+   ]
+  }
+ },
+ "guard": {
+  "min_delta": 0.3,
+  "min_n": 30,
+  "cooldown": 5,
+  "max_hit_drop": 0.05,
+  "recent": 20,
+  "top": 5,
+  "w_min_delta": 1.0,
+  "w_cooldown_weeks": 2,
+  "w_recent": 30,
+  "w_mdd_tol": 2.0,
+  "w_days": 120
+ },
+ "log": [
+  {
+   "date": "2026-10-12",
+   "ver": 1,
+   "group": "開始轉空",
+   "auto": false,
+   "desc": "開始轉空：排除已超跌（離月線<-8%、K<20）與高波動；大盤多頭時最多 2 檔；MACD 柱體須為負",
+   "d_older": null,
+   "d_recent": null
+  },
+  {
+   "date": "2026-10-12",
+   "ver": 1,
+   "group": "開始轉多",
+   "auto": false,
+   "desc": "開始轉多：拿掉 KD 黃金交叉加分；離月線>8%、量比>2 倍排除；MACD 柱體須為正",
+   "d_older": null,
+   "d_recent": null
+  },
+  {
+   "date": "2026-10-12",
+   "ver": 1,
+   "group": "跌到支撐",
+   "auto": false,
+   "desc": "跌到支撐：K≥20 且不再下降；當天須收紅K",
+   "d_older": null,
+   "d_recent": null
+  },
+  {
+   "date": "2026-10-14",
+   "ver": 1,
+   "group": "觀察池",
+   "auto": false,
+   "desc": "改為觀察池模式：每天最多新增 3 檔（非多頭 1 檔）、池內 10 檔、訊號連續 2 天、持有 20 日、停損＋硬停損 10%；規則優化改為每週六執行",
+   "d_older": null,
+   "d_recent": null
+  },
+  {
+   "date": "2026-10-16",
+   "ver": 1,
+   "group": "觀察池",
+   "auto": false,
+   "desc": "週報回測期間改為近 120 個交易日（約六個月），驗證段改為近 30 日；週報改在週六中午執行",
+   "d_older": null,
+   "d_recent": null
+  },
+  {
+   "date": "2026-10-17",
+   "ver": 2,
+   "group": "跌到支撐",
+   "auto": true,
+   "desc": "跌到支撐：量比下限 0 → 1",
+   "d_older": 2.68,
+   "d_recent": 3.26
+  },
+  {
+   "date": "2026-10-17",
+   "ver": 3,
+   "group": "觀察池",
+   "auto": false,
+   "desc": "使用者決定改用 H7 趨勢單池（測試版）：新增股票改為超級趨勢 ST(10,2) 翻多＋ADX≥20，大盤非多頭時停止新增；出場沿用持有 20 日、跌破月線、硬停損 10%；10/16 以前入選的持股照原規則出場",
+   "d_older": null,
+   "d_recent": null
+  }
+ ],
+ "daily": [
+  {
+   "date": "2026-10-12",
+   "adopted": false,
+   "ver": 1,
+   "note": "有一項調整達標但暫緩：開始轉空：離月線下限：-8% → -6%（前段 +1.06、近 20 日 +0.50），該組 5 個交易日內剛調整過，冷卻期後若仍達標才採用",
+   "tested": 21
+  },
+  {
+   "date": "2026-10-13",
+   "adopted": false,
+   "ver": 1,
+   "note": "有一項調整達標但暫緩：開始轉空：離月線下限：-8% → -6%（前段 +0.89、近 20 日 +0.49），該組 5 個交易日內剛調整過，冷卻期後若仍達標才採用",
+   "tested": 21
+  },
+  {
+   "date": "2026-10-17",
+   "adopted": true,
+   "ver": 2,
+   "note": "採用：跌到支撐：量比下限 0 → 1（前段 +2.68、近 30 日 +3.26 個百分點）",
+   "tested": 34,
+   "weekly": true
+  }
+ ],
+ "current": {
+  "開始轉多": {
+   "older": {
+    "n": 190,
+    "ex": -1.162,
+    "hit": 0.474
+   },
+   "recent": {
+    "n": 98,
+    "ex": 0.94,
+    "hit": 0.48
+   }
+  },
+  "開始轉空": {
+   "older": {
+    "n": 76,
+    "ex": 1.592,
+    "hit": 0.474
+   },
+   "recent": {
+    "n": 41,
+    "ex": 0.935,
+    "hit": 0.537
+   }
+  },
+  "強勢發動": {
+   "older": {
+    "n": 179,
+    "ex": -1.338,
+    "hit": 0.458
+   },
+   "recent": {
+    "n": 100,
+    "ex": -0.603,
+    "hit": 0.49
+   }
+  },
+  "跌到支撐": {
+   "older": {
+    "n": 173,
+    "ex": 0.332,
+    "hit": 0.52
+   },
+   "recent": {
+    "n": 94,
+    "ex": 0.363,
+    "hit": 0.553
+   }
+  }
+ },
+ "windows": {
+  "older": [
+   "2026-04-22",
+   "2026-08-28"
+  ],
+  "recent": [
+   "2026-08-31",
+   "2026-10-14"
+  ]
+ },
+ "pool": {
+  "hold": 20,
+  "persist": 2,
+  "max_new": 3,
+  "bear_new": 0,
+  "pool_max": 10,
+  "per_group": 2,
+  "hard_stop": 0.1,
+  "reentry_gap": 5,
+  "entry_mode": "supertrend",
+  "adx_min": 20,
+  "exit_mode": "hold",
+  "st_period": 10,
+  "st_mult": 2.0
+ },
+ "wlog": [
+  {
+   "date": "2026-10-17",
+   "ver": 2,
+   "scope": "跌到支撐",
+   "desc": "跌到支撐：量比下限 0 → 1",
+   "d_older": 2.68,
+   "d_recent": 3.26
+  },
+  {
+   "date": "2026-10-17",
+   "ver": 3,
+   "scope": "pool",
+   "desc": "觀察池：改用 H7（使用者決定）",
+   "d_older": null,
+   "d_recent": null
+  }
+ ],
+ "current_pool": {
+  "stats": {
+   "trades": 129,
+   "avg": 2.2,
+   "hit": 31,
+   "total": 27.58,
+   "mdd": -9.22,
+   "avg_pos": 8.6,
+   "stop_rate": 88
+  },
+  "older": 22.6,
+  "recent": 1.44,
+  "bench_mdd": -15.88
+ }
+}

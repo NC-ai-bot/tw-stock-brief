@@ -1,0 +1,22 @@
+# 執行時產生的工作檔（在 pipeline/ 底下執行時）
+__pycache__/
+data/
+data_raw/
+data_adj/
+quotes/
+quotes_stale/
+gapdata/
+divnew/
+site/
+kdata.json
+divs.json
+eve.json
+pool.json
+history.json
+archive.json
+*.pdf
+*.png
+*.jpg
+*.txt
+!SHA256SUMS
+!requirements.txt
