@@ -289,7 +289,7 @@
     const arch = D.archive || [], hist = D.history || [];
     let h = '';
     h += `<section class="sec plain"><h2>歷史晨報<span class="cnt">保留最近 60 份</span></h2><div class="body">
-      ${arch.length ? `<ul class="arch">${arch.map((a, i) => `<li><a href="archive/${esc(a.file_date)}.pdf" data-pdf="${esc(a.report_date)} 晨報（資料日 ${esc(a.data_date)}）" data-date="${esc(a.file_date)}" ${i ? 'data-hist' : ''}>${esc(a.report_date)}</a>${i ? '' : '<span class="today">今日</span>'}<span class="am">資料日 ${esc(a.data_date)}・${a.n} 檔</span></li>`).join('')}</ul>` : '<p class="empty">尚無歸檔</p>'}
+      ${arch.length ? `<ul class="arch">${arch.map((a, i) => { const short = s => (s || '').replace(/^\d{4}\/0?/, '').replace(/\/0?/, '/'); return `<li><a href="archive/${esc(a.file_date)}.pdf" data-pdf="${esc(a.report_date)} 晨報（資料日 ${esc(a.data_date)}）" data-date="${esc(a.file_date)}" ${i ? 'data-hist' : ''}>${esc(short(a.report_date))}</a>${i ? '' : '<span class="today">今日</span>'}<span class="am">資料日 ${esc(short(a.data_date).replace(/（.）/, ''))}・${a.n} 檔</span></li>`; }).join('')}</ul>` : '<p class="empty">尚無歸檔</p>'}
       <p class="note">點日期看當天 PDF。</p></div></section>`;
     const byDate = {};
     hist.forEach(x => { (byDate[x.date] = byDate[x.date] || []).push(x); });
