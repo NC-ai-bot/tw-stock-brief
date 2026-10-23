@@ -1,0 +1,193 @@
+{
+ "positions": [
+  {
+   "code": "3005",
+   "name": "神基",
+   "sector": "強固型電腦",
+   "group": "強勢發動",
+   "entry_date": "2026-10-15",
+   "entry": 121.0,
+   "stop": [
+    "MA10",
+    null
+   ],
+   "stop_now": 121.3,
+   "days": 5,
+   "last": 125.5,
+   "ret": 3.72,
+   "prev_close": 125.5,
+   "stop_dist": 3.46
+  },
+  {
+   "code": "5876",
+   "name": "上海商銀",
+   "sector": "銀行",
+   "group": "強勢發動",
+   "entry_date": "2026-10-15",
+   "entry": 53.4,
+   "stop": [
+    "MA10",
+    null
+   ],
+   "stop_now": 52.75,
+   "days": 5,
+   "last": 54.6,
+   "ret": 2.25,
+   "prev_close": 54.6,
+   "stop_dist": 3.5
+  },
+  {
+   "code": "2834",
+   "name": "臺企銀",
+   "sector": "公股銀行",
+   "group": "趨勢翻多",
+   "entry_date": "2026-10-16",
+   "entry": 18.05,
+   "stop": [
+    "MA20",
+    null
+   ],
+   "stop_now": 17.72,
+   "days": 4,
+   "last": 17.9,
+   "ret": -0.83,
+   "prev_close": 17.9,
+   "stop_dist": 1.03
+  },
+  {
+   "code": "2356",
+   "name": "英業達",
+   "sector": "AI伺服器代工",
+   "group": "趨勢翻多",
+   "entry_date": "2026-10-20",
+   "entry": 60.0,
+   "stop": [
+    "MA20",
+    null
+   ],
+   "stop_now": 59.16,
+   "days": 2,
+   "last": 60.5,
+   "ret": 0.83,
+   "prev_close": 60.5,
+   "stop_dist": 2.27
+  },
+  {
+   "code": "6173",
+   "name": "信昌電",
+   "sector": "被動元件（MLCC）",
+   "group": "回檔站回",
+   "entry_date": "2026-10-22",
+   "entry": 293.5,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 247.84,
+   "days": 0,
+   "last": 293.5,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 18.42,
+   "ref": 293.5,
+   "cap": 304.64,
+   "lot": 293500,
+   "status": "pending"
+  }
+ ],
+ "closed": [
+  {
+   "code": "6442",
+   "name": "光聖",
+   "sector": "光通訊",
+   "group": "開始轉多",
+   "entry_date": "2026-10-14",
+   "entry": 1640.0,
+   "exit_date": "2026-10-15",
+   "exit": 1540.0,
+   "days": 1,
+   "why": "stop",
+   "ret": -6.1
+  },
+  {
+   "code": "3293",
+   "name": "鈊象",
+   "sector": "遊戲軟體",
+   "group": "開始轉多",
+   "entry_date": "2026-10-14",
+   "entry": 811.0,
+   "exit_date": "2026-10-19",
+   "exit": 774.0,
+   "days": 3,
+   "why": "stop",
+   "ret": -4.56
+  },
+  {
+   "code": "3044",
+   "name": "健鼎",
+   "sector": "PCB",
+   "group": "強勢發動",
+   "entry_date": "2026-10-14",
+   "entry": 603.0,
+   "exit_date": "2026-10-19",
+   "exit": 577.0,
+   "days": 3,
+   "why": "stop",
+   "ret": -4.31
+  },
+  {
+   "code": "3227",
+   "name": "原相",
+   "sector": "光學感測IC",
+   "group": "開始轉多",
+   "entry_date": "2026-10-15",
+   "entry": 187.5,
+   "exit_date": "2026-10-19",
+   "exit": 182.0,
+   "days": 2,
+   "why": "stop",
+   "ret": -2.93
+  }
+ ],
+ "start": "2026-10-14",
+ "equity": [
+  {
+   "date": "2026-10-14",
+   "eq": 1.0,
+   "n": 0
+  },
+  {
+   "date": "2026-10-15",
+   "eq": 0.970277,
+   "n": 2
+  },
+  {
+   "date": "2026-10-16",
+   "eq": 0.972497,
+   "n": 5
+  },
+  {
+   "date": "2026-10-19",
+   "eq": 0.955432,
+   "n": 3
+  },
+  {
+   "date": "2026-10-20",
+   "eq": 0.95926,
+   "n": 3
+  },
+  {
+   "date": "2026-10-21",
+   "eq": 0.969174,
+   "n": 4,
+   "acct": "avg"
+  },
+  {
+   "date": "2026-10-22",
+   "eq": 0.969174,
+   "n": 4,
+   "acct": "slot"
+  }
+ ],
+ "unfilled": []
+}

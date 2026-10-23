@@ -90,3 +90,22 @@ inc.py unpack ─► WebFetch 報價/日K ─► inc.py merge        inc.py unpa
 ```
 
 `kdata.json` 一律存**原始（未還原）**價格；還原只在 `adj.py apply` 時套用到 `data/`。
+
+## 晨報 app（`docs/`，GitHub Pages）
+
+網址：https://nc-ai-bot.github.io/tw-stock-brief/ ，手機開啟後「加入主畫面」就是 app（PWA，可離線看上次的內容）。
+app 只讀 `docs/data/*.json`，選股邏輯一律在排程裡算好；`docs/report.pdf` 是今日 PDF，`docs/archive/YYYYMMDD.pdf` 是歷史 PDF（有才顯示）。
+
+| 檔案 | 來源（排程產出的同名檔） | 內容 |
+| --- | --- | --- |
+| `data/meta.json` | meta.json | report_date、data_date、file_date、notes |
+| `data/market.json` | market.json | 加權／櫃買指數狀態 |
+| `data/market_analysis.json` | market_analysis.json | summary／tech／chips／intl／plan |
+| `data/pool_out.json` | pool_out.json | 今日新增（含 cap、lot、status）、出場、續抱、風險、unfilled、summary、ev |
+| `data/pool.json` | pool.json | positions、closed、equity |
+| `data/history.json` | history.json | 歷史入選 |
+| `data/archive.json` | archive.json | 歷史晨報清單 |
+| `data/i1.json` | i1.json | I1 測試名單 |
+| `data/ext.json` | ext.json | 趨勢延續觀察 |
+
+目前 `docs/data/` 是 2026/10/24 手動放入的晚上版資料（資料日 10/22）；排程自動推送是下一步。

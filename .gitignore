@@ -20,3 +20,13 @@ archive.json
 *.txt
 !SHA256SUMS
 !requirements.txt
+
+# docs/ 是 GitHub Pages 上的 app，裡面的資料與圖示要進版
+!docs/
+!docs/data/
+!docs/data/*
+!docs/icons/
+!docs/icons/*
+!docs/*.pdf
+!docs/*.txt
+_art/

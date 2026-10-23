@@ -1,0 +1,17 @@
+{
+  "name": "台股技術面選股晨報",
+  "short_name": "晨報",
+  "description": "每個交易日的選股晨報：今日新增、可買入上限、持股與出場線、歷史與測試名單",
+  "start_url": "./?src=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f8",
+  "theme_color": "#2c5d9e",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

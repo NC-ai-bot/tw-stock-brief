@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>選股晨報</title>
+<meta name="description" content="台股技術面選股晨報：今日新增、可買入上限、持股與出場線、歷史晨報、測試名單">
+<meta name="theme-color" content="#1b1f24" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7f8" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="晨報">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="title-row">
+      <h1>選股晨報</h1>
+      <button type="button" id="refresh" class="iconbtn" aria-label="重新整理" title="重新整理">⟳</button>
+    </div>
+    <p id="dateline" class="dateline">載入中…</p>
+    <div id="mkt" class="mkt" hidden></div>
+    <p id="stale" class="banner" hidden></p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="tab-today" class="tab" data-tab="today"></section>
+  <section id="tab-pool" class="tab" data-tab="pool" hidden></section>
+  <section id="tab-history" class="tab" data-tab="history" hidden></section>
+  <section id="tab-lab" class="tab" data-tab="lab" hidden></section>
+  <p class="disclaimer">技術面整理，不構成投資建議。資料：證交所、櫃買中心、FinMind。</p>
+</main>
+
+<nav class="tabbar" aria-label="主要分頁">
+  <button type="button" class="tabbtn active" data-go="today"><span class="ico">☀</span>今日</button>
+  <button type="button" class="tabbtn" data-go="pool"><span class="ico">▤</span>持股</button>
+  <button type="button" class="tabbtn" data-go="history"><span class="ico">⌛</span>歷史</button>
+  <button type="button" class="tabbtn" data-go="lab"><span class="ico">⚗</span>測試</button>
+</nav>
+
+<section id="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="vtitle">
+  <div class="vbar"><div class="vhead"><b id="vtitle">晨報</b><span id="vstat" class="am"></span></div><button type="button" id="vclose">關閉</button></div>
+  <p id="vwarn" hidden></p>
+  <div id="vpages"></div>
+</section>
+
+<div id="install" class="installtip" hidden>
+  <b>加到主畫面就是 app</b>
+  <span id="installhow"></span>
+  <button type="button" id="installbtn" hidden>安裝</button>
+  <button type="button" id="installclose" class="iconbtn" aria-label="關閉">×</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+<script src="app.js?v=1" defer></script>
+</body>
+</html>
