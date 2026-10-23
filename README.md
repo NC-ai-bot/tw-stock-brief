@@ -108,4 +108,4 @@ app 只讀 `docs/data/*.json`，選股邏輯一律在排程裡算好；`docs/rep
 | `data/i1.json` | i1.json | I1 測試名單 |
 | `data/ext.json` | ext.json | 趨勢延續觀察 |
 
-目前 `docs/data/` 是 2026/10/24 手動放入的晚上版資料（資料日 10/22）；排程自動推送是下一步。
+自動更新：21:51 夜間排程推晚上版、07:29 晨報排程推正式版（含當天 archive PDF 與清理 60 份以外的舊檔）、08:40 備援排程在觸發備援時再推一次；三個排程都以 add_repo（push）＋ git clone/commit/push 寫入 docs/。
