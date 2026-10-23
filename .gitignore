@@ -30,3 +30,5 @@ archive.json
 !docs/*.pdf
 !docs/*.txt
 _art/
+!docs/archive/
+!docs/archive/*
