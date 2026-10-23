@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: quotes
   cancel-in-progress: false
@@ -29,3 +30,8 @@ jobs:
           git commit -m "盤中報價 $(TZ=Asia/Taipei date '+%m/%d %H:%M')" || exit 0
           for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
           exit 1
+      - name: 觸發 Pages 部署（GITHUB_TOKEN 的 commit 不會自動觸發）
+        if: steps.q.outputs.rc == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref "$GITHUB_REF_NAME"

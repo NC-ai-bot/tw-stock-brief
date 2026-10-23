@@ -32,3 +32,5 @@ archive.json
 _art/
 !docs/archive/
 !docs/archive/*
+!docs/data/k/
+!docs/data/k/*

@@ -53,6 +53,14 @@
   <div id="vpages"></div>
 </section>
 
+<section id="chart" hidden role="dialog" aria-modal="true" aria-labelledby="ctitle">
+  <div class="cbar"><div><b id="ctitle">K 線</b><div id="csub" class="am"></div></div><button type="button" id="cclose">關閉</button></div>
+  <div class="cranges"><button type="button" data-range="60">3 個月</button><button type="button" data-range="120" class="active">6 個月</button><button type="button" data-range="180">9 個月</button></div>
+  <div class="cwrap"><canvas id="ccanvas"></canvas></div>
+  <div id="clegend" class="clegend"></div>
+  <p class="note">日K為除權息還原價；虛線為可買入上限、停損（趨勢線）與進場價。手指滑過 K 棒可看當日數值。</p>
+</section>
+
 <div id="install" class="installtip" hidden>
   <b>加到主畫面就是 app</b>
   <span id="installhow"></span>

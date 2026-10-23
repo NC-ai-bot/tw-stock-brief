@@ -185,3 +185,20 @@ body.vopen{overflow:hidden}
 .lflag.ok{background:color-mix(in srgb,var(--w4) 14%,transparent);color:var(--w4)}
 .lflag.over{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
 .lflag.warn{background:color-mix(in srgb,var(--strong) 16%,transparent);color:var(--strong)}
+
+/* K 線圖 */
+#chart{position:fixed;inset:0;z-index:51;background:var(--bg);overflow-y:auto;padding:calc(var(--sat) + 10px) 12px calc(var(--sab) + 20px);display:flex;flex-direction:column;gap:10px}
+#chart[hidden]{display:none}
+#chart>*{width:100%;max-width:880px;margin-inline:auto}
+#chart .cbar{display:flex;align-items:flex-start;gap:10px}
+#chart .cbar b{font-size:1.15rem}
+#chart .am{color:var(--muted);font-size:.85rem}
+#cclose{margin-left:auto;padding:7px 14px;border:0;border-radius:var(--rs);background:var(--paper);color:var(--fg);font:inherit;font-weight:600;cursor:pointer}
+.cranges{display:flex;gap:6px}
+.cranges button{flex:1;padding:6px 0;border:0;border-radius:var(--rs);background:var(--paper);color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer}
+.cranges button.active{background:var(--support);color:#fff;font-weight:600}
+.cwrap{background:var(--paper);border-radius:var(--r);padding:8px 4px 4px}
+#ccanvas{width:100%;display:block;touch-action:pan-y}
+.clegend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.8rem;color:var(--muted)}
+.clegend b{color:var(--fg)}
+[data-k]{cursor:pointer}

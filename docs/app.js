@@ -84,7 +84,7 @@
     // 今日出場
     const ex = po.exits || [];
     h += `<section class="sec down"><h2>今日出場<span class="cnt">${ex.length} 檔</span></h2><div class="body">${ex.length ? ex.map(x => `
-      <div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
+      <div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
       <span class="sub">${esc(x.sector || '')}・${grp(x.group)}・進場 ${fmt(x.entry)} → 出場 ${fmt(x.exit)}・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">無</p>'}</div></section>`;
 
     // 風險提示
@@ -95,7 +95,7 @@
     const hold = po.holding || [];
     const s = po.summary || {};
     h += `<section class="sec support"><h2>續抱<span class="cnt">${hold.length}／${(po.params || {}).pool_max || 10} 檔</span></h2><div class="body">
-      ${hold.length ? hold.map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
+      ${hold.length ? hold.map(x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
         <span class="sub">${grp(x.group)}・停損 ${fmt(x.stop_now)}${x.group === '回檔站回' ? '（趨勢線）' : ''}・持有 ${x.days}${x.group === '回檔站回' ? '' : '/20'} 天</span></div>`).join('') : '<p class="empty">目前池內無持股</p>'}
       ${s.start ? `<p class="note">觀察池績效（${md(s.start)} 起）：已結算 ${s.closed} 筆，平均 ${pct(s.avg)}、勝率 ${s.hit == null ? '—' : s.hit + '%'}；累積 ${pct(s.cum)}（同期 0050 ${pct(s.bench)}）</p>` : ''}
       <div class="btnrow" style="margin-top:10px"><button type="button" class="btn" data-go="pool">看持股明細</button></div></div></section>`;
@@ -114,7 +114,7 @@
 
   function pick(x) {
     const lotBig = x.lot && x.lot >= 1000000;
-    return `<div class="pick">
+    return `<div class="pick" data-k="${esc(x.code)}">
       <div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="tag g-${esc(x.group)}">${esc(x.group)}</span><span class="sub" style="color:var(--muted);font-size:.82rem">${esc(x.sector || '')}</span></div>
       <div class="kv">
         <div><span class="k">參考價（入選日收盤）</span><span class="v">${fmt(x.ref != null ? x.ref : x.entry)}</span></div>
@@ -163,7 +163,7 @@
           else if (d < 2) flag = '<span class="lflag warn">接近停損</span>';
         }
       }
-      return `<div class="lrow"><div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span>${flag}
+      return `<div class="lrow" data-k="${esc(x.code)}"><div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span>${flag}
         <span class="px"><b>${last == null ? '—' : fmt(last)}${x.est ? '<i title="尚無成交，以買賣價估計">*</i>' : ''}</b><em class="${cls(x.chg_pct)}">${pct(x.chg_pct)}</em></span></div>
         <div class="meta">${ctx}${x.time ? `<span class="t">${esc(x.time.slice(0, 5))}</span>` : ''}</div></div>`;
     };
@@ -215,7 +215,7 @@
       </div>${spark(eq)}</div></section>`;
 
     h += `<section class="sec down"><h2>已結算<span class="cnt">${closed.length} 筆</span></h2><div class="body">${closed.length ? closed.map(x => `
-      <div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
+      <div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
       <span class="sub">${grp(x.group)}・${md(x.entry_date)} ${fmt(x.entry)} → ${md(x.exit_date)} ${fmt(x.exit)}・${x.days} 天・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">尚無結算</p>'}</div></section>`;
     el.innerHTML = h;
   }
@@ -224,7 +224,7 @@
     const pending = x.status === 'pending';
     const dist = x.stop_dist;
     const w = dist == null ? 0 : Math.max(2, Math.min(100, dist * 5));
-    return `<div class="posrow">
+    return `<div class="posrow" data-k="${esc(x.code)}">
       <div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span>${pending ? '<span class="pend">今日可買</span>' : ''}<span class="ret ${cls(x.ret)}">${pending ? '' : pct(x.ret)}</span></div>
       <div class="meta"><span>${grp(x.group)}・${esc(x.sector || '')}</span>
         <span>${md(x.entry_date)} 入選</span>
@@ -263,7 +263,7 @@
     const dates = Object.keys(byDate).sort().reverse();
     h += `<section class="sec plain"><h2>歷史入選<span class="cnt">${hist.length} 筆</span></h2><div class="body">
       ${dates.map((d, i) => `<details ${i < 2 ? 'open' : ''}><summary>${md(d)}（資料日）<span class="am">${byDate[d].length} 檔</span></summary>
-        ${byDate[d].map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num">${fmt(x.entry)}</span><span class="sub">${esc(x.sector || '')}・${grp(x.group)}${x.ver ? '・第 ' + x.ver + ' 版' : ''}</span></div>`).join('')}
+        ${byDate[d].map(x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num">${fmt(x.entry)}</span><span class="sub">${esc(x.sector || '')}・${grp(x.group)}${x.ver ? '・第 ' + x.ver + ' 版' : ''}</span></div>`).join('')}
       </details>`).join('')}</div></section>`;
     el.innerHTML = h;
   }
@@ -275,7 +275,7 @@
     let h = `<p class="note" style="margin:0">這一頁是「只記錄、不納入觀察池」的測試名單，用來跟 W4 比成績，不是建議買的名單。</p>`;
     if (i1) {
       const st = i1.stats || {};
-      const row = x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${x.ret != null ? pct(x.ret) : ''}</span>
+      const row = x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${x.ret != null ? pct(x.ret) : ''}</span>
         <span class="sub">${x.entry != null ? `進場 ${fmt(x.entry)}` : ''}${x.cap != null ? `・上限 ${fmt(x.cap)}` : ''}${x.stop_now != null ? `・停損 ${fmt(x.stop_now)}` : ''}${x.w != null ? `・權重 ${(x.w * 100).toFixed(0)}%` : ''}${x.days != null ? `・${x.days} 天` : ''}</span></div>`;
       h += `<section class="sec i1"><h2>I1 測試名單<span class="cnt">評分選股＋移動停損</span></h2><div class="body">
         <h3>今日新增${i1.bull === false ? '<span class="cnt">大盤非多頭，不新增</span>' : ''}</h3>${(i1.new || []).length ? i1.new.map(row).join('') : '<p class="empty">無</p>'}
@@ -285,20 +285,143 @@
           <div><span class="k">累積</span><span class="v ${cls(st.cum)}">${pct(st.cum)}</span></div>
           <div><span class="k">同期 0050</span><span class="v ${cls(st.bench)}">${pct(st.bench)}</span></div>
           <div><span class="k">已結算</span><span class="v">${st.closed || 0} 筆</span></div></div>
-        ${(i1.top || []).length ? `<details style="margin-top:8px"><summary>今日評分前 ${i1.top.length} 名</summary>${i1.top.map(t => `<div class="stock"><span class="code">${esc(t.code)}</span><span class="name">${esc(t.name)}</span><span class="num">${fmt(t.close)}</span><span class="sub">評分 ${t.score}・ADX ${t.adx}・120 日 ${pct(t.ret120, 1)}</span></div>`).join('')}</details>` : ''}
+        ${(i1.top || []).length ? `<details style="margin-top:8px"><summary>今日評分前 ${i1.top.length} 名</summary>${i1.top.map(t => `<div class="stock" data-k="${esc(t.code)}"><span class="code">${esc(t.code)}</span><span class="name">${esc(t.name)}</span><span class="num">${fmt(t.close)}</span><span class="sub">評分 ${t.score}・ADX ${t.adx}・120 日 ${pct(t.ret120, 1)}</span></div>`).join('')}</details>` : ''}
         ${i1.backtest ? `<p class="note">${esc(i1.backtest)}</p>` : ''}
         <p class="note">${md(st.start)} 起紙上追蹤一個月，之後再決定是否納入。</p></div></section>`;
     }
     if (ext) {
       const st = ext.stats || {};
       h += `<section class="sec strong"><h2>趨勢延續觀察<span class="cnt">測試中</span></h2><div class="body">
-        ${(ext.list || []).length ? ext.list.map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num">${fmt(x.close)}</span><span class="sub">20 日 ${pct(x.mom20, 1)}・離月線 ${pct(x.ext20, 1)}・ADX ${x.adx}</span></div>`).join('') : '<p class="empty">今日無符合條件的股票</p>'}
-        ${(ext.opens || []).length ? `<details style="margin-top:8px"><summary>模擬持有<span class="am">${ext.opens.length} 檔・平均 ${pct(st.open_avg)}</span></summary>${ext.opens.map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span><span class="sub">${md(x.date)} 進場 ${fmt(x.entry)} → ${fmt(x.last)}・${x.days} 天</span></div>`).join('')}</details>` : ''}
+        ${(ext.list || []).length ? ext.list.map(x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num">${fmt(x.close)}</span><span class="sub">20 日 ${pct(x.mom20, 1)}・離月線 ${pct(x.ext20, 1)}・ADX ${x.adx}</span></div>`).join('') : '<p class="empty">今日無符合條件的股票</p>'}
+        ${(ext.opens || []).length ? `<details style="margin-top:8px"><summary>模擬持有<span class="am">${ext.opens.length} 檔・平均 ${pct(st.open_avg)}</span></summary>${ext.opens.map(x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span><span class="sub">${md(x.date)} 進場 ${fmt(x.entry)} → ${fmt(x.last)}・${x.days} 天</span></div>`).join('')}</details>` : ''}
         <p class="note">已結算 ${st.closed || 0} 筆、平均 ${pct(st.avg)}。${esc(ext.backtest || '')}</p></div></section>`;
     }
     if (!i1 && !ext) h += '<p class="empty">尚無測試資料。</p>';
     el.innerHTML = h;
   }
+
+
+  // ---------- K 線圖（自繪 canvas，點任何一檔股票打開） ----------
+  const K = { cache: {}, code: null, range: 120, cur: null };
+  function levelsFor(code) {
+    const L = [];
+    const po = D.pool_out || {}, pool = D.pool || {}, i1 = D.i1 || {};
+    const seen = {};
+    const put = (v, label, color) => { if (v != null && !seen[label]) { seen[label] = 1; L.push({ v: +v, label, color }); } };
+    (po.new || []).concat((pool.positions || []).filter(x => x.status === 'pending')).forEach(x => { if (x.code === code) { put(x.cap, '可買入上限', 'var(--w4)'); put(x.stop_now, '停損', 'var(--down)'); } });
+    (pool.positions || []).forEach(x => { if (x.code === code && x.status !== 'pending') { put(x.entry, '進場', 'var(--support)'); put(x.stop_now, '停損', 'var(--down)'); } });
+    (i1.new || []).forEach(x => { if (x.code === code) { put(x.cap, 'I1 上限', 'var(--i1)'); put(x.stop_now, 'I1 停損', 'var(--i1)'); } });
+    (i1.holding || []).forEach(x => { if (x.code === code) { put(x.entry, 'I1 進場', 'var(--i1)'); put(x.stop_now, 'I1 停損', 'var(--i1)'); } });
+    return L;
+  }
+  async function openChart(code) {
+    const box = $('#chart'); box.hidden = false; document.body.classList.add('vopen');
+    K.code = code; K.cur = null;
+    $('#ctitle').textContent = code; $('#csub').textContent = '載入中…'; $('#clegend').innerHTML = '';
+    let d = K.cache[code];
+    if (!d) {
+      try { const r = await fetch(`data/k/${code}.json`); if (!r.ok) throw 0; d = await r.json(); K.cache[code] = d; }
+      catch (e) { $('#csub').textContent = '這檔還沒有 K 線資料（每天晨報產出時會補上入選股票的日K）'; return; }
+    }
+    if (K.code !== code) return;
+    const last = d.bars[d.bars.length - 1], prev = d.bars[d.bars.length - 2];
+    const chg = prev ? (last[4] / prev[4] - 1) * 100 : null;
+    $('#ctitle').textContent = `${d.code} ${d.name}`;
+    $('#csub').innerHTML = `${esc(last[0])} 收 <b>${fmt(last[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span>・還原價`;
+    drawChart();
+  }
+  function closeChart() { $('#chart').hidden = true; document.body.classList.remove('vopen'); K.code = null; }
+  $('#cclose').addEventListener('click', closeChart);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#chart').hidden) closeChart(); });
+  document.addEventListener('click', e => {
+    const r = e.target.closest('[data-range]'); if (r) { K.range = +r.dataset.range; document.querySelectorAll('[data-range]').forEach(b => b.classList.toggle('active', b === r)); drawChart(); return; }
+    if (e.target.closest('a,button,summary')) return;
+    const k = e.target.closest('[data-k]'); if (k) openChart(k.dataset.k);
+  });
+  window.addEventListener('resize', () => { if (!$('#chart').hidden) drawChart(); });
+
+  function ma(c, n, i) { if (i < n - 1) return null; let s = 0; for (let j = i - n + 1; j <= i; j++) s += c[j]; return s / n; }
+  function drawChart() {
+    const d = K.cache[K.code]; if (!d) return;
+    const cv = $('#ccanvas'), wrap = cv.parentElement;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const W = wrap.clientWidth, H = Math.max(300, Math.min(460, Math.round(W * 0.95)));
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const css = getComputedStyle(document.documentElement);
+    const col = n => css.getPropertyValue(n).trim();
+    const C = { up: col('--up'), down: col('--down'), muted: col('--muted'), line: col('--line'), fg: col('--fg'), ma5: '#e39b2e', ma20: '#3a7bd5', ma60: '#9b59b6', w4: col('--w4'), i1: col('--i1'), support: col('--support') };
+    const bars = d.bars.slice(-K.range), n = bars.length;
+    const closes = d.bars.map(b => b[4]), off = d.bars.length - n;
+    const padL = 6, padR = 52, top = 8, volH = Math.round(H * 0.18), gap = 18, bottom = 18;
+    const priceH = H - top - volH - gap - bottom;
+    const levels = levelsFor(K.code).filter(l => l.v > 0);
+    let lo = Infinity, hi = -Infinity;
+    bars.forEach(b => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); });
+    levels.forEach(l => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
+    const padP = (hi - lo) * 0.06 || 1; lo -= padP; hi += padP;
+    const x = i => padL + (i + 0.5) * (W - padL - padR) / n;
+    const y = v => top + (hi - v) / (hi - lo) * priceH;
+    const bw = Math.max(1.5, (W - padL - padR) / n * 0.62);
+    const vmax = Math.max(...bars.map(b => b[5]), 1);
+    const vy = v => top + priceH + gap + volH - v / vmax * volH;
+    ctx.clearRect(0, 0, W, H);
+    // 價格格線
+    ctx.font = '11px ' + css.getPropertyValue('--sans');
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const step = niceStep((hi - lo) / 5);
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, y(v)); ctx.lineTo(W - padR, y(v)); ctx.stroke();
+      ctx.fillStyle = C.muted; ctx.fillText(fmt(v, step < 1 ? 2 : 0), W - padR + 4, y(v));
+    }
+    // 日期標籤（每月第一根）
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    bars.forEach((b, i) => { if (i > 0 && b[0].slice(0, 7) !== bars[i - 1][0].slice(0, 7)) { ctx.fillStyle = C.muted; ctx.fillText(b[0].slice(5, 7).replace(/^0/, '') + '月', x(i), H - bottom + 4); } });
+    // 均線
+    [[5, C.ma5], [20, C.ma20], [60, C.ma60]].forEach(([p, color]) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.beginPath(); let started = false;
+      bars.forEach((b, i) => { const m = ma(closes, p, off + i); if (m == null) return; if (!started) { ctx.moveTo(x(i), y(m)); started = true; } else ctx.lineTo(x(i), y(m)); });
+      ctx.stroke();
+    });
+    // K 棒與量
+    bars.forEach((b, i) => {
+      const upc = b[4] >= b[1], color = upc ? C.up : C.down;
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x(i), y(b[2])); ctx.lineTo(x(i), y(b[3])); ctx.stroke();
+      const o = y(b[1]), c = y(b[4]);
+      if (upc) { ctx.fillStyle = col('--paper'); ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); ctx.strokeRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); }
+      else ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o)));
+      ctx.globalAlpha = 0.55; ctx.fillStyle = color; ctx.fillRect(x(i) - bw / 2, vy(b[5]), bw, top + priceH + gap + volH - vy(b[5])); ctx.globalAlpha = 1;
+    });
+    // 水平線：上限／停損／進場
+    levels.forEach(l => {
+      const color = l.color.startsWith('var(') ? col(l.color.slice(4, -1)) : l.color;
+      ctx.strokeStyle = color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(padL, y(l.v)); ctx.lineTo(W - padR, y(l.v)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px ' + css.getPropertyValue('--sans');
+      ctx.fillText(`${l.label} ${fmt(l.v)}`, padL + 4, y(l.v) - 2);
+      ctx.font = '11px ' + css.getPropertyValue('--sans');
+    });
+    // 十字線
+    const i = K.cur == null ? n - 1 : Math.max(0, Math.min(n - 1, K.cur));
+    if (K.cur != null) {
+      ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x(i), top); ctx.lineTo(x(i), top + priceH + gap + volH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(padL, y(bars[i][4])); ctx.lineTo(W - padR, y(bars[i][4])); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.fg; ctx.fillRect(W - padR + 1, y(bars[i][4]) - 8, padR - 2, 16); ctx.fillStyle = col('--bg'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(bars[i][4]), W - padR + 4, y(bars[i][4]));
+    }
+    const b = bars[i], pv = (off + i) > 0 ? closes[off + i - 1] : null;
+    const chg = pv ? (b[4] / pv - 1) * 100 : null;
+    const m = p => { const v = ma(closes, p, off + i); return v == null ? '—' : fmt(v); };
+    $('#clegend').innerHTML = `<span>${esc(b[0])}</span><span>開 ${fmt(b[1])}</span><span>高 ${fmt(b[2])}</span><span>低 ${fmt(b[3])}</span><span>收 <b class="${cls(chg)}">${fmt(b[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span></span><span>量 ${fmt(b[5], 0)} 張</span>
+      <span style="color:${C.ma5}">MA5 ${m(5)}</span><span style="color:${C.ma20}">MA20 ${m(20)}</span><span style="color:${C.ma60}">MA60 ${m(60)}</span>`;
+    K._geo = { n, padL, padR, W };
+  }
+  function niceStep(r) { const p = Math.pow(10, Math.floor(Math.log10(r || 1))); const f = r / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+  (function () {
+    const cv = $('#ccanvas');
+    const at = e => { const g = K._geo; if (!g) return; const r = cv.getBoundingClientRect(); const px = (e.touches ? e.touches[0].clientX : e.clientX) - r.left; K.cur = Math.floor((px - g.padL) / ((g.W - g.padL - g.padR) / g.n)); drawChart(); };
+    cv.addEventListener('mousemove', at); cv.addEventListener('touchstart', at, { passive: true }); cv.addEventListener('touchmove', at, { passive: true });
+    cv.addEventListener('mouseleave', () => { K.cur = null; drawChart(); });
+  })();
 
   // ---------- 分頁 ----------
   function go(name, push) {
