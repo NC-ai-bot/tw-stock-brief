@@ -36,14 +36,18 @@
   // ---------- header ----------
   function renderHeader() {
     const m = D.meta || {};
-    $('#dateline').textContent = m.report_date ? `${m.report_date} 晨報・資料日 ${m.data_date || ''} 收盤` : '找不到晨報資料';
+    const dl = $('#dateline');
+    if (m.report_date) {
+      const r = /(\d{4})\/(\d{2})\/(\d{2})（(.)）/.exec(m.report_date);
+      dl.innerHTML = r ? `<b>${+r[2]}/${+r[3]}</b><span class="wd">週${esc(r[4])}</span><small>資料日 ${esc((m.data_date || '').replace(/^\d{4}\//, ''))} 收盤</small>` : esc(m.report_date);
+    } else dl.textContent = '找不到晨報資料';
     const mk = D.market;
     const box = $('#mkt');
     if (mk && mk.TSE01) {
       box.hidden = false;
       box.innerHTML = ['TSE01', 'OTC01'].filter(k => mk[k]).map(k => {
         const x = mk[k];
-        return `<span>${esc(x.name)} <b>${fmt(x.close)}</b> <span class="${cls(x.chg)}">${pct(x.chg)}</span> ${esc(x.state || '')}</span>`;
+        return `<span><small>${esc(x.name.replace('指數', ''))}${x.state ? '・' + esc(x.state) : ''}</small><b>${fmt(x.close)}</b><em class="${cls(x.chg)}">${pct(x.chg)}</em></span>`;
       }).join('');
     } else box.hidden = true;
     const stale = $('#stale');
@@ -61,7 +65,7 @@
 
     // 盤勢重點
     const lead = (ma.summary || []).concat();
-    if (lead.length) h += `<section class="card plain"><h2>盤勢重點</h2><ul class="lead">${lead.map(s => `<li>${esc(s)}</li>`).join('')}</ul></section>`;
+    if (lead.length) h += `<section class="sec plain"><h2>盤勢重點</h2><div class="body"><ul class="lead">${lead.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div></section>`;
 
     // 今日新增
     const news = po.new || [];
@@ -74,36 +78,36 @@
     if (news.length && ev) evh = `<p class="note">回測期望值（同一套規則 ${ev.n} 筆，${esc(ev.period || '')}，已扣成本）：每筆平均 ${pct(ev.mean, 1)}、中位數 ${pct(ev.median, 1)}，一半落在 ${pct(ev.q25, 1)}～${pct(ev.q75, 1)}；勝率 ${ev.win}%，賺的平均 ${pct(ev.winavg, 1)}、賠的平均 ${pct(ev.lossavg, 1)}。多數會小賠出場，不是這一檔的預測。</p>`;
     let unf = '';
     if ((po.unfilled || []).length) unf = `<p class="note">昨日新增未成交（整天都在可買入上限之上，依規則不追）：${po.unfilled.map(u => `${esc(u.code)} ${esc(u.name)}（上限 ${fmt(u.cap)}、開盤 ${fmt(u.open)}）`).join('、')}</p>`;
-    h += `<section class="card w4"><h2>今日新增<span class="cnt">${news.length} 檔${po.bull === false ? '・大盤非多頭，最多 ' + po.max_new + ' 檔' : ''}</span></h2>${body}${evh}${unf}</section>`;
+    h += `<section class="sec w4"><h2>今日新增<span class="cnt">${news.length} 檔${po.bull === false ? '・大盤非多頭，最多 ' + po.max_new + ' 檔' : ''}</span></h2><div class="body">${body}${evh}${unf}</div></section>`;
 
     // 今日出場
     const ex = po.exits || [];
-    h += `<section class="card down"><h2>今日出場<span class="cnt">${ex.length} 檔</span></h2>${ex.length ? ex.map(x => `
+    h += `<section class="sec down"><h2>今日出場<span class="cnt">${ex.length} 檔</span></h2><div class="body">${ex.length ? ex.map(x => `
       <div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
-      <span class="sub">${esc(x.sector || '')}・${grp(x.group)}・進場 ${fmt(x.entry)} → 出場 ${fmt(x.exit)}・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">無</p>'}</section>`;
+      <span class="sub">${esc(x.sector || '')}・${grp(x.group)}・進場 ${fmt(x.entry)} → 出場 ${fmt(x.exit)}・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">無</p>'}</div></section>`;
 
     // 風險提示
     const risk = po.risk || [];
-    if (risk.length) h += `<section class="card strong"><h2>風險提示</h2><ul class="lead">${risk.map(r => `<li>${esc(r.code)} ${esc(r.name)}：${esc(r.text)}</li>`).join('')}</ul></section>`;
+    if (risk.length) h += `<section class="sec strong"><h2>風險提示</h2><div class="body"><ul class="lead">${risk.map(r => `<li>${esc(r.code)} ${esc(r.name)}：${esc(r.text)}</li>`).join('')}</ul></div></section>`;
 
     // 續抱摘要 → 持股分頁
     const hold = po.holding || [];
     const s = po.summary || {};
-    h += `<section class="card support"><h2>續抱<span class="cnt">${hold.length}／${(po.params || {}).pool_max || 10} 檔</span></h2>
+    h += `<section class="sec support"><h2>續抱<span class="cnt">${hold.length}／${(po.params || {}).pool_max || 10} 檔</span></h2><div class="body">
       ${hold.length ? hold.map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
         <span class="sub">${grp(x.group)}・停損 ${fmt(x.stop_now)}${x.group === '回檔站回' ? '（趨勢線）' : ''}・持有 ${x.days}${x.group === '回檔站回' ? '' : '/20'} 天</span></div>`).join('') : '<p class="empty">目前池內無持股</p>'}
       ${s.start ? `<p class="note">觀察池績效（${md(s.start)} 起）：已結算 ${s.closed} 筆，平均 ${pct(s.avg)}、勝率 ${s.hit == null ? '—' : s.hit + '%'}；累積 ${pct(s.cum)}（同期 0050 ${pct(s.bench)}）</p>` : ''}
-      <div class="btnrow" style="margin-top:10px"><button type="button" class="btn" data-go="pool">看持股明細</button></div></section>`;
+      <div class="btnrow" style="margin-top:10px"><button type="button" class="btn" data-go="pool">看持股明細</button></div></div></section>`;
 
     // 技術面／籌碼／國際盤
     const sec = [['技術面', ma.tech], ['籌碼', ma.chips], ['國際盤與夜盤', ma.intl], ['今日觀察', ma.plan]].filter(([, a]) => a && a.length);
-    if (sec.length) h += `<section class="card plain"><h2>大盤分析</h2>${sec.map(([t, a]) => `<details><summary>${t}</summary><ul class="lead">${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}</section>`;
+    if (sec.length) h += `<section class="sec plain"><h2>大盤分析</h2><div class="body">${sec.map(([t, a]) => `<details><summary>${t}</summary><ul class="lead">${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}</div></section>`;
 
     // 完整報告
-    h += `<section class="card plain"><h2>完整報告</h2><div class="btnrow">
+    h += `<section class="sec plain"><h2>完整報告</h2><div class="body"><div class="btnrow">
       <a class="btn primary" href="report.pdf" data-pdf="${esc((D.meta || {}).report_date || '')} 晨報">開啟今日 PDF（含 K 線圖）</a>
       <a class="btn" href="${WEB}" target="_blank" rel="noopener">晨報網頁版</a></div>
-      ${(D.meta && D.meta.notes || []).length ? `<details style="margin-top:8px"><summary>備註<span class="am">${D.meta.notes.length} 則</span></summary><ul class="lead note">${D.meta.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>` : ''}</section>`;
+      ${(D.meta && D.meta.notes || []).length ? `<details style="margin-top:8px"><summary>備註<span class="am">${D.meta.notes.length} 則</span></summary><ul class="lead note">${D.meta.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>` : ''}</div></section>`;
     el.innerHTML = h;
   }
 
@@ -129,13 +133,13 @@
     const pos = p.positions || [], closed = (p.closed || []).slice().reverse();
     const s = (D.pool_out || {}).summary || {};
     let h = '';
-    h += `<section class="card support"><h2>目前持股<span class="cnt">${pos.length}／${((D.pool_out || {}).params || {}).pool_max || 10} 檔</span></h2>
+    h += `<section class="sec support"><h2>目前持股<span class="cnt">${pos.length}／${((D.pool_out || {}).params || {}).pool_max || 10} 檔</span></h2><div class="body">
       ${pos.length ? pos.map(posrow).join('') : '<p class="empty">目前池內無持股</p>'}
-      <p class="note">損益以資料日收盤計算。「回檔站回」停損是超級趨勢線，會隨股價上移、不設持有天數；其他組別維持原停損與 20 天上限。</p></section>`;
+      <p class="note">損益以資料日收盤計算。「回檔站回」停損是超級趨勢線，會隨股價上移、不設持有天數；其他組別維持原停損與 20 天上限。</p></div></section>`;
 
     const eq = p.equity || [];
     const last = eq.length ? (eq[eq.length - 1].eq - 1) * 100 : null;
-    h += `<section class="card plain"><h2>觀察池績效<span class="cnt">${md(p.start)} 起</span></h2>
+    h += `<section class="sec plain"><h2>觀察池績效<span class="cnt">${md(p.start)} 起</span></h2><div class="body">
       <div class="stats">
         <div><span class="k">累積</span><span class="v ${cls(last)}">${pct(last)}</span></div>
         <div><span class="k">同期 0050</span><span class="v ${cls(s.bench)}">${pct(s.bench)}</span></div>
@@ -143,11 +147,11 @@
         <div><span class="k">平均每筆</span><span class="v ${cls(s.avg)}">${pct(s.avg)}</span></div>
         <div><span class="k">勝率</span><span class="v">${s.hit == null ? '—' : s.hit + '%'}</span></div>
         <div><span class="k">停損出場</span><span class="v">${s.stop_rate == null ? '—' : s.stop_rate + '%'}</span></div>
-      </div>${spark(eq)}</section>`;
+      </div>${spark(eq)}</div></section>`;
 
-    h += `<section class="card down"><h2>已結算<span class="cnt">${closed.length} 筆</span></h2>${closed.length ? closed.map(x => `
+    h += `<section class="sec down"><h2>已結算<span class="cnt">${closed.length} 筆</span></h2><div class="body">${closed.length ? closed.map(x => `
       <div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span>
-      <span class="sub">${grp(x.group)}・${md(x.entry_date)} ${fmt(x.entry)} → ${md(x.exit_date)} ${fmt(x.exit)}・${x.days} 天・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">尚無結算</p>'}</section>`;
+      <span class="sub">${grp(x.group)}・${md(x.entry_date)} ${fmt(x.entry)} → ${md(x.exit_date)} ${fmt(x.exit)}・${x.days} 天・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">尚無結算</p>'}</div></section>`;
     el.innerHTML = h;
   }
 
@@ -184,18 +188,18 @@
     const el = $('#tab-history');
     const arch = D.archive || [], hist = D.history || [];
     let h = '';
-    h += `<section class="card plain"><h2>歷史晨報<span class="cnt">保留最近 60 份</span></h2>
+    h += `<section class="sec plain"><h2>歷史晨報<span class="cnt">保留最近 60 份</span></h2><div class="body">
       ${arch.length ? `<ul class="arch">${arch.map((a, i) => `<li><a href="archive/${esc(a.file_date)}.pdf" data-pdf="${esc(a.report_date)} 晨報（資料日 ${esc(a.data_date)}）" data-date="${esc(a.file_date)}" ${i ? 'data-hist' : ''}>${esc(a.report_date)}</a>${i ? '' : '<span class="today">今日</span>'}<span class="am">資料日 ${esc(a.data_date)}・${a.n} 檔</span></li>`).join('')}</ul>` : '<p class="empty">尚無歸檔</p>'}
-      <p class="note">點日期看當天 PDF。</p></section>`;
+      <p class="note">點日期看當天 PDF。</p></div></section>`;
 
     // history.json 依日期分組（新到舊）
     const byDate = {};
     hist.forEach(x => { (byDate[x.date] = byDate[x.date] || []).push(x); });
     const dates = Object.keys(byDate).sort().reverse();
-    h += `<section class="card plain"><h2>歷史入選<span class="cnt">${hist.length} 筆</span></h2>
+    h += `<section class="sec plain"><h2>歷史入選<span class="cnt">${hist.length} 筆</span></h2><div class="body">
       ${dates.map((d, i) => `<details ${i < 2 ? 'open' : ''}><summary>${md(d)}（資料日）<span class="am">${byDate[d].length} 檔</span></summary>
         ${byDate[d].map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num">${fmt(x.entry)}</span><span class="sub">${esc(x.sector || '')}・${grp(x.group)}${x.ver ? '・第 ' + x.ver + ' 版' : ''}</span></div>`).join('')}
-      </details>`).join('')}</section>`;
+      </details>`).join('')}</div></section>`;
     el.innerHTML = h;
   }
 
@@ -208,7 +212,7 @@
       const st = i1.stats || {};
       const row = x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${x.ret != null ? pct(x.ret) : ''}</span>
         <span class="sub">${x.entry != null ? `進場 ${fmt(x.entry)}` : ''}${x.cap != null ? `・上限 ${fmt(x.cap)}` : ''}${x.stop_now != null ? `・停損 ${fmt(x.stop_now)}` : ''}${x.w != null ? `・權重 ${(x.w * 100).toFixed(0)}%` : ''}${x.days != null ? `・${x.days} 天` : ''}</span></div>`;
-      h += `<section class="card i1"><h2>I1 測試名單<span class="cnt">評分選股＋移動停損</span></h2>
+      h += `<section class="sec i1"><h2>I1 測試名單<span class="cnt">評分選股＋移動停損</span></h2><div class="body">
         <h3>今日新增${i1.bull === false ? '<span class="cnt">大盤非多頭，不新增</span>' : ''}</h3>${(i1.new || []).length ? i1.new.map(row).join('') : '<p class="empty">無</p>'}
         ${(i1.exits || []).length ? `<h3 style="margin-top:10px">今日出場</h3>${i1.exits.map(row).join('')}` : ''}
         <h3 style="margin-top:10px">模擬持股<span class="cnt">${(i1.holding || []).length} 檔</span></h3>${(i1.holding || []).length ? i1.holding.map(row).join('') : '<p class="empty">無</p>'}
@@ -218,14 +222,14 @@
           <div><span class="k">已結算</span><span class="v">${st.closed || 0} 筆</span></div></div>
         ${(i1.top || []).length ? `<details style="margin-top:8px"><summary>今日評分前 ${i1.top.length} 名</summary>${i1.top.map(t => `<div class="stock"><span class="code">${esc(t.code)}</span><span class="name">${esc(t.name)}</span><span class="num">${fmt(t.close)}</span><span class="sub">評分 ${t.score}・ADX ${t.adx}・120 日 ${pct(t.ret120, 1)}</span></div>`).join('')}</details>` : ''}
         ${i1.backtest ? `<p class="note">${esc(i1.backtest)}</p>` : ''}
-        <p class="note">${md(st.start)} 起紙上追蹤一個月，之後再決定是否納入。</p></section>`;
+        <p class="note">${md(st.start)} 起紙上追蹤一個月，之後再決定是否納入。</p></div></section>`;
     }
     if (ext) {
       const st = ext.stats || {};
-      h += `<section class="card strong"><h2>趨勢延續觀察<span class="cnt">測試中</span></h2>
+      h += `<section class="sec strong"><h2>趨勢延續觀察<span class="cnt">測試中</span></h2><div class="body">
         ${(ext.list || []).length ? ext.list.map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num">${fmt(x.close)}</span><span class="sub">20 日 ${pct(x.mom20, 1)}・離月線 ${pct(x.ext20, 1)}・ADX ${x.adx}</span></div>`).join('') : '<p class="empty">今日無符合條件的股票</p>'}
         ${(ext.opens || []).length ? `<details style="margin-top:8px"><summary>模擬持有<span class="am">${ext.opens.length} 檔・平均 ${pct(st.open_avg)}</span></summary>${ext.opens.map(x => `<div class="stock"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span><span class="sub">${md(x.date)} 進場 ${fmt(x.entry)} → ${fmt(x.last)}・${x.days} 天</span></div>`).join('')}</details>` : ''}
-        <p class="note">已結算 ${st.closed || 0} 筆、平均 ${pct(st.avg)}。${esc(ext.backtest || '')}</p></section>`;
+        <p class="note">已結算 ${st.closed || 0} 筆、平均 ${pct(st.avg)}。${esc(ext.backtest || '')}</p></div></section>`;
     }
     if (!i1 && !ext) h += '<p class="empty">尚無測試資料。</p>';
     el.innerHTML = h;
