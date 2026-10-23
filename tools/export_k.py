@@ -22,7 +22,7 @@ def load(docs, name):
 
 
 def wanted(docs):
-    codes = ['TSE01', '0050']
+    codes = ['TSE01', 'OTC01', '0050']
     def add(lst, key='code'):
         for x in lst or []:
             c = x.get(key) if isinstance(x, dict) else None
