@@ -48,7 +48,7 @@
       box.hidden = false;
       box.innerHTML = ['TSE01', 'OTC01'].filter(k => mk[k]).map(k => {
         const x = mk[k];
-        return `<span><small>${esc(x.name.replace('指數', ''))}${x.state ? '・' + esc(x.state) : ''}</small><b>${fmt(x.close)}</b><em class="${cls(x.chg)}">${pct(x.chg)}</em></span>`;
+        return `<span ${k === 'TSE01' ? 'data-k="TSE01"' : ''}><small>${esc(x.name.replace('指數', ''))}${x.state ? '・' + esc(x.state) : ''}</small><b>${fmt(x.close)}</b><em class="${cls(x.chg)}">${pct(x.chg)}</em></span>`;
       }).join('');
     } else box.hidden = true;
     const stale = $('#stale');
@@ -140,7 +140,7 @@
     let h = `<p class="note" style="margin:0">${closed ? `今天沒有盤中資料，顯示的是 ${esc(fmtDate(q.data_date))} 的收盤。` : `更新 ${esc(q.updated)}（${esc(q.data_date ? fmtDate(q.data_date) : '')} 盤中）`}・報價來自證交所，延遲約 5–10 分鐘，只供判斷是否碰到上限或出場線。</p>`;
     const idx = q.index || {};
     const ik = ['t00', 'o00'].filter(k => idx[k]);
-    if (ik.length) h += `<div class="mkt" style="margin-top:0">${ik.map(k => { const x = idx[k]; return `<span><small>${esc(x.name)}${x.time ? '・' + esc(x.time.slice(0, 5)) : ''}</small><b>${fmt(x.last)}</b><em class="${cls(x.chg_pct)}">${pct(x.chg_pct)}</em></span>`; }).join('')}</div>`;
+    if (ik.length) h += `<div class="mkt" style="margin-top:0">${ik.map(k => { const x = idx[k]; return `<span ${k === 't00' ? 'data-k="TSE01"' : ''}><small>${esc(x.name)}${x.time ? '・' + esc(x.time.slice(0, 5)) : ''}</small><b>${fmt(x.last)}</b><em class="${cls(x.chg_pct)}">${pct(x.chg_pct)}</em></span>`; }).join('')}</div>`;
 
     const row = (x, kind) => {
       const last = x.last;
@@ -153,6 +153,11 @@
           else { ctx = `<span>上限 ${fmt(cap)}</span><span>高於上限 ${pct(d, 1)}，不追</span>`; flag = '<span class="lflag over">超過上限</span>'; }
         } else if (cap != null) ctx = `<span>上限 ${fmt(cap)}</span>`;
         if (stop != null) ctx += `<span>停損 ${fmt(stop)}</span>`;
+      } else if (kind === 'ext' || kind === 'extopen') {
+        if (x.ext_close != null) ctx = `<span>昨收 ${fmt(x.ext_close)}</span>`;
+        if (x.extopen_entry != null && last != null) ctx += `<span>模擬進場 ${fmt(x.extopen_entry)} → <b class="${cls(last / x.extopen_entry - 1)}">${pct((last / x.extopen_entry - 1) * 100)}</b></span>`;
+      } else if (kind === 'exit') {
+        ctx = `<span>晨報出場價 ${fmt(x.exit_exit)}（${pct(x.exit_ret)}）</span>`;
       } else {
         const stop = x[kind + '_stop'], entry = x[kind + '_entry'];
         if (entry != null && last != null) ctx = `<span>進場 ${fmt(entry)} → <b class="${cls(last / entry - 1)}">${pct((last / entry - 1) * 100)}</b></span>`;
@@ -167,10 +172,10 @@
         <span class="px"><b>${last == null ? '—' : fmt(last)}${x.est ? '<i title="尚無成交，以買賣價估計">*</i>' : ''}</b><em class="${cls(x.chg_pct)}">${pct(x.chg_pct)}</em></span></div>
         <div class="meta">${ctx}${x.time ? `<span class="t">${esc(x.time.slice(0, 5))}</span>` : ''}</div></div>`;
     };
-    const groups = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1']];
+    const groups = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['exit', '今日出場', 'down'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1'], ['ext', '趨勢延續觀察（測試）', 'strong']];
     let any = false;
     groups.forEach(([k, title, c]) => {
-      const list = it.filter(x => x.kinds.includes(k));
+      const list = it.filter(x => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen') && !x.kinds.includes('ext')));
       if (!list.length) return;
       any = true;
       h += `<section class="sec ${c}"><h2>${title}<span class="cnt">${list.length} 檔</span></h2><div class="body">${list.map(x => row(x, k)).join('')}</div></section>`;
@@ -187,7 +192,7 @@
     const tpe = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
     const hm = tpe.getHours() * 60 + tpe.getMinutes(), wd = tpe.getDay();
     if (wd === 0 || wd === 6 || hm < 9 * 60 || hm > 14 * 60) return;
-    fetch(`data/quotes.json?t=${Date.now()}`, { cache: 'reload' }).then(r => r.ok ? r.json() : null).then(j => { if (j && JSON.stringify(j) !== JSON.stringify(D.quotes)) { D.quotes = j; renderLive(); } }).catch(() => {});
+    fetch(`data/quotes.json?t=${Date.now()}`, { cache: 'reload' }).then(r => r.ok ? r.json() : null).then(j => { if (j && JSON.stringify(j) !== JSON.stringify(D.quotes)) { D.quotes = j; renderLive(); if (!$('#chart').hidden) drawChart(); } }).catch(() => {});
   }, 60000);
 
   // ---------- 持股 ----------
@@ -314,6 +319,16 @@
     (i1.holding || []).forEach(x => { if (x.code === code) { put(x.entry, 'I1 進場', 'var(--i1)'); put(x.stop_now, 'I1 停損', 'var(--i1)'); } });
     return L;
   }
+  function liveBar(code, bars) {
+    // 盤中／收盤後：用 quotes.json 把「今天這一根」接上去（日K檔要到晚上才會更新）
+    const q = D.quotes; if (!q) return null;
+    const src = code === 'TSE01' ? (q.index || {}).t00 : (q.items || []).find(x => x.code === code);
+    if (!src || !src.date || src.last == null) return null;
+    const d = `${src.date.slice(0, 4)}-${src.date.slice(4, 6)}-${src.date.slice(6)}`;
+    if (bars.length && d <= bars[bars.length - 1][0]) return null;
+    const o = src.open != null ? src.open : src.last, h = Math.max(src.high != null ? src.high : src.last, src.last), l = Math.min(src.low != null ? src.low : src.last, src.last);
+    return [d, o, h, l, src.last, src.vol || 0, true];
+  }
   async function openChart(code) {
     const box = $('#chart'); box.hidden = false; document.body.classList.add('vopen');
     K.code = code; K.cur = null;
@@ -324,10 +339,6 @@
       catch (e) { $('#csub').textContent = '這檔還沒有 K 線資料（每天晨報產出時會補上入選股票的日K）'; return; }
     }
     if (K.code !== code) return;
-    const last = d.bars[d.bars.length - 1], prev = d.bars[d.bars.length - 2];
-    const chg = prev ? (last[4] / prev[4] - 1) * 100 : null;
-    $('#ctitle').textContent = `${d.code} ${d.name}`;
-    $('#csub').innerHTML = `${esc(last[0])} 收 <b>${fmt(last[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span>・還原價`;
     drawChart();
   }
   function closeChart() { $('#chart').hidden = true; document.body.classList.remove('vopen'); K.code = null; }
@@ -341,78 +352,126 @@
   window.addEventListener('resize', () => { if (!$('#chart').hidden) drawChart(); });
 
   function ma(c, n, i) { if (i < n - 1) return null; let s = 0; for (let j = i - n + 1; j <= i; j++) s += c[j]; return s / n; }
+  function indicators(all) {
+    const n = all.length, C = all.map(b => b[4]);
+    // KD(9,3,3)
+    const Kv = new Array(n).fill(null), Dv = new Array(n).fill(null), Jv = new Array(n).fill(null);
+    let k = 50, dd = 50;
+    for (let i = 0; i < n; i++) {
+      if (i < 8) continue;
+      let hi = -Infinity, lo = Infinity;
+      for (let j = i - 8; j <= i; j++) { hi = Math.max(hi, all[j][2]); lo = Math.min(lo, all[j][3]); }
+      const rsv = hi === lo ? 50 : (C[i] - lo) / (hi - lo) * 100;
+      k = k * 2 / 3 + rsv / 3; dd = dd * 2 / 3 + k / 3;
+      Kv[i] = k; Dv[i] = dd; Jv[i] = 3 * k - 2 * dd;
+    }
+    // MACD(12,26,9)
+    const ema = (p) => { const out = []; const a = 2 / (p + 1); let e = null; for (let i = 0; i < n; i++) { e = e == null ? C[i] : C[i] * a + e * (1 - a); out.push(e); } return out; };
+    const e12 = ema(12), e26 = ema(26);
+    const dif = e12.map((v, i) => v - e26[i]);
+    const dea = []; { const a = 2 / 10; let e = null; dif.forEach(v => { e = e == null ? v : v * a + e * (1 - a); dea.push(e); }); }
+    const osc = dif.map((v, i) => v - dea[i]);
+    return { K: Kv, D: Dv, J: Jv, dif, dea, osc };
+  }
   function drawChart() {
     const d = K.cache[K.code]; if (!d) return;
     const cv = $('#ccanvas'), wrap = cv.parentElement;
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    const W = wrap.clientWidth, H = Math.max(300, Math.min(460, Math.round(W * 0.95)));
+    const W = wrap.clientWidth, H = Math.max(420, Math.min(640, Math.round(W * 1.35)));
     cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement);
-    const col = n => css.getPropertyValue(n).trim();
-    const C = { up: col('--up'), down: col('--down'), muted: col('--muted'), line: col('--line'), fg: col('--fg'), ma5: '#e39b2e', ma20: '#3a7bd5', ma60: '#9b59b6', w4: col('--w4'), i1: col('--i1'), support: col('--support') };
-    const bars = d.bars.slice(-K.range), n = bars.length;
-    const closes = d.bars.map(b => b[4]), off = d.bars.length - n;
-    const padL = 6, padR = 52, top = 8, volH = Math.round(H * 0.18), gap = 18, bottom = 18;
-    const priceH = H - top - volH - gap - bottom;
+    const col = v => css.getPropertyValue(v).trim();
+    const C = { up: col('--up'), down: col('--down'), muted: col('--muted'), line: col('--line'), fg: col('--fg'), paper: col('--paper'), bg: col('--bg'), ma5: '#e39b2e', ma20: '#3a7bd5', ma60: '#9b59b6', k: '#e39b2e', d: '#3a7bd5', j: '#c04fd0', dif: '#e39b2e', dea: '#3a7bd5' };
+    const FONT = css.getPropertyValue('--sans');
+    const live = liveBar(K.code, d.bars);
+    const all = live ? d.bars.concat([live]) : d.bars;
+    const ind = indicators(all);
+    const bars = all.slice(-K.range), n = bars.length, off = all.length - n;
+    const closes = all.map(b => b[4]);
+    const last = all[all.length - 1], prevC = all.length > 1 ? all[all.length - 2][4] : null;
+    const chg = prevC ? (last[4] / prevC - 1) * 100 : null;
+    $('#ctitle').textContent = `${d.code} ${d.name}`;
+    $('#csub').innerHTML = `${esc(last[0])}${live ? '（' + (D.quotes && D.quotes.market_open ? '盤中' : '收盤') + '，報價延遲約 5–10 分）' : ''} 收 <b>${fmt(last[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span>・還原價`;
+
+    const padL = 6, padR = 54, bottom = 16, gapP = 14;
+    const pH = Math.round(H * 0.46), vH = Math.round(H * 0.12), kH = Math.round(H * 0.15), mH = H - pH - vH - kH - bottom - gapP * 3 - 8;
+    const P = { top: 8, h: pH }, V = { top: P.top + pH + gapP, h: vH }, KD = { top: 0, h: kH }, M = { top: 0, h: mH };
+    KD.top = V.top + vH + gapP; M.top = KD.top + kH + gapP;
+    const x = i => padL + (i + 0.5) * (W - padL - padR) / n;
+    const bw = Math.max(1.5, (W - padL - padR) / n * 0.62);
     const levels = levelsFor(K.code).filter(l => l.v > 0);
     let lo = Infinity, hi = -Infinity;
     bars.forEach(b => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); });
     levels.forEach(l => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
     const padP = (hi - lo) * 0.06 || 1; lo -= padP; hi += padP;
-    const x = i => padL + (i + 0.5) * (W - padL - padR) / n;
-    const y = v => top + (hi - v) / (hi - lo) * priceH;
-    const bw = Math.max(1.5, (W - padL - padR) / n * 0.62);
+    const y = v => P.top + (hi - v) / (hi - lo) * P.h;
     const vmax = Math.max(...bars.map(b => b[5]), 1);
-    const vy = v => top + priceH + gap + volH - v / vmax * volH;
+    const vy = v => V.top + V.h - v / vmax * V.h;
+    const ky = v => KD.top + (100 - Math.max(-20, Math.min(120, v))) / 140 * KD.h + (-20 + 100) * 0; // 範圍 -20..120
+    const kyr = v => KD.top + (120 - v) / 140 * KD.h;
+    const mAll = bars.map((b, i) => off + i), mvals = mAll.flatMap(i => [ind.dif[i], ind.dea[i], ind.osc[i]]).filter(v => v != null);
+    const mmax = Math.max(...mvals.map(Math.abs), 1e-6);
+    const my = v => M.top + (mmax - v) / (2 * mmax) * M.h;
+
     ctx.clearRect(0, 0, W, H);
+    ctx.font = '11px ' + FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    // 分區標題
+    const label = (t, top) => { ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(t, padL + 2, top - 12); };
     // 價格格線
-    ctx.font = '11px ' + css.getPropertyValue('--sans');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     const step = niceStep((hi - lo) / 5);
     for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
       ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, y(v)); ctx.lineTo(W - padR, y(v)); ctx.stroke();
-      ctx.fillStyle = C.muted; ctx.fillText(fmt(v, step < 1 ? 2 : 0), W - padR + 4, y(v));
+      ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(v, step < 1 ? 2 : 0), W - padR + 4, y(v));
     }
-    // 日期標籤（每月第一根）
+    // 日期標籤
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    bars.forEach((b, i) => { if (i > 0 && b[0].slice(0, 7) !== bars[i - 1][0].slice(0, 7)) { ctx.fillStyle = C.muted; ctx.fillText(b[0].slice(5, 7).replace(/^0/, '') + '月', x(i), H - bottom + 4); } });
+    bars.forEach((b, i) => { if (i > 0 && b[0].slice(0, 7) !== bars[i - 1][0].slice(0, 7)) { ctx.fillStyle = C.muted; ctx.fillText(b[0].slice(5, 7).replace(/^0/, '') + '月', x(i), H - bottom + 3); ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x(i), P.top); ctx.lineTo(x(i), M.top + M.h); ctx.stroke(); } });
     // 均線
-    [[5, C.ma5], [20, C.ma20], [60, C.ma60]].forEach(([p, color]) => {
-      ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.beginPath(); let started = false;
-      bars.forEach((b, i) => { const m = ma(closes, p, off + i); if (m == null) return; if (!started) { ctx.moveTo(x(i), y(m)); started = true; } else ctx.lineTo(x(i), y(m)); });
-      ctx.stroke();
-    });
+    const line = (fn, color, w) => { ctx.strokeStyle = color; ctx.lineWidth = w || 1.2; ctx.beginPath(); let s = false; bars.forEach((b, i) => { const v = fn(i); if (v == null) return; if (!s) { ctx.moveTo(x(i), v); s = true; } else ctx.lineTo(x(i), v); }); ctx.stroke(); };
+    [[5, C.ma5], [20, C.ma20], [60, C.ma60]].forEach(([p, color]) => line(i => { const m = ma(closes, p, off + i); return m == null ? null : y(m); }, color));
     // K 棒與量
     bars.forEach((b, i) => {
       const upc = b[4] >= b[1], color = upc ? C.up : C.down;
       ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x(i), y(b[2])); ctx.lineTo(x(i), y(b[3])); ctx.stroke();
       const o = y(b[1]), c = y(b[4]);
-      if (upc) { ctx.fillStyle = col('--paper'); ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); ctx.strokeRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); }
+      if (upc) { ctx.fillStyle = C.paper; ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); ctx.strokeRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); }
       else ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o)));
-      ctx.globalAlpha = 0.55; ctx.fillStyle = color; ctx.fillRect(x(i) - bw / 2, vy(b[5]), bw, top + priceH + gap + volH - vy(b[5])); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.55; ctx.fillStyle = color; ctx.fillRect(x(i) - bw / 2, vy(b[5]), bw, V.top + V.h - vy(b[5])); ctx.globalAlpha = 1;
     });
-    // 水平線：上限／停損／進場
+    if (live) { ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.font = '10px ' + FONT; ctx.fillText(D.quotes && D.quotes.market_open ? '今日（盤中）' : '今日', W - padR - 2, P.top + 2); ctx.font = '11px ' + FONT; }
+    // 水平線
     levels.forEach(l => {
       const color = l.color.startsWith('var(') ? col(l.color.slice(4, -1)) : l.color;
       ctx.strokeStyle = color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(padL, y(l.v)); ctx.lineTo(W - padR, y(l.v)); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px ' + css.getPropertyValue('--sans');
-      ctx.fillText(`${l.label} ${fmt(l.v)}`, padL + 4, y(l.v) - 2);
-      ctx.font = '11px ' + css.getPropertyValue('--sans');
+      ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px ' + FONT; ctx.fillText(`${l.label} ${fmt(l.v)}`, padL + 4, y(l.v) - 2); ctx.font = '11px ' + FONT;
     });
+    // KD 區
+    label('KD(9,3,3)', KD.top);
+    [[80, '80'], [50, '50'], [20, '20']].forEach(([v, t]) => { ctx.strokeStyle = C.line; ctx.setLineDash(v === 50 ? [] : [3, 3]); ctx.beginPath(); ctx.moveTo(padL, kyr(v)); ctx.lineTo(W - padR, kyr(v)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(t, W - padR + 4, kyr(v)); });
+    line(i => ind.K[off + i] == null ? null : kyr(ind.K[off + i]), C.k); line(i => ind.D[off + i] == null ? null : kyr(ind.D[off + i]), C.d); line(i => ind.J[off + i] == null ? null : kyr(ind.J[off + i]), C.j, 1);
+    // MACD 區
+    label('MACD(12,26,9)', M.top);
+    ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(padL, my(0)); ctx.lineTo(W - padR, my(0)); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('0', W - padR + 4, my(0));
+    bars.forEach((b, i) => { const v = ind.osc[off + i]; if (v == null) return; ctx.fillStyle = v >= 0 ? C.up : C.down; ctx.globalAlpha = 0.7; ctx.fillRect(x(i) - bw / 2, Math.min(my(0), my(v)), bw, Math.abs(my(v) - my(0)) || 1); ctx.globalAlpha = 1; });
+    line(i => off + i < 26 ? null : my(ind.dif[off + i]), C.dif); line(i => off + i < 34 ? null : my(ind.dea[off + i]), C.dea);
     // 十字線
     const i = K.cur == null ? n - 1 : Math.max(0, Math.min(n - 1, K.cur));
     if (K.cur != null) {
-      ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x(i), top); ctx.lineTo(x(i), top + priceH + gap + volH); ctx.stroke();
+      ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x(i), P.top); ctx.lineTo(x(i), M.top + M.h); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(padL, y(bars[i][4])); ctx.lineTo(W - padR, y(bars[i][4])); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = C.fg; ctx.fillRect(W - padR + 1, y(bars[i][4]) - 8, padR - 2, 16); ctx.fillStyle = col('--bg'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(bars[i][4]), W - padR + 4, y(bars[i][4]));
+      ctx.fillStyle = C.fg; ctx.fillRect(W - padR + 1, y(bars[i][4]) - 8, padR - 2, 16); ctx.fillStyle = C.bg; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(bars[i][4]), W - padR + 4, y(bars[i][4]));
     }
-    const b = bars[i], pv = (off + i) > 0 ? closes[off + i - 1] : null;
-    const chg = pv ? (b[4] / pv - 1) * 100 : null;
-    const m = p => { const v = ma(closes, p, off + i); return v == null ? '—' : fmt(v); };
-    $('#clegend').innerHTML = `<span>${esc(b[0])}</span><span>開 ${fmt(b[1])}</span><span>高 ${fmt(b[2])}</span><span>低 ${fmt(b[3])}</span><span>收 <b class="${cls(chg)}">${fmt(b[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span></span><span>量 ${fmt(b[5], 0)} 張</span>
-      <span style="color:${C.ma5}">MA5 ${m(5)}</span><span style="color:${C.ma20}">MA20 ${m(20)}</span><span style="color:${C.ma60}">MA60 ${m(60)}</span>`;
+    const b = bars[i], gi = off + i, pv = gi > 0 ? closes[gi - 1] : null;
+    const bchg = pv ? (b[4] / pv - 1) * 100 : null;
+    const m = p => { const v = ma(closes, p, gi); return v == null ? '—' : fmt(v); };
+    const f1 = v => v == null ? '—' : v.toFixed(1), f2 = v => v == null ? '—' : v.toFixed(2);
+    $('#clegend').innerHTML = `<span>${esc(b[0])}${b[6] ? '（盤中）' : ''}</span><span>開 ${fmt(b[1])}</span><span>高 ${fmt(b[2])}</span><span>低 ${fmt(b[3])}</span><span>收 <b class="${cls(bchg)}">${fmt(b[4])}</b> <span class="${cls(bchg)}">${pct(bchg)}</span></span><span>量 ${fmt(b[5], 0)} 張</span>
+      <span style="color:${C.ma5}">MA5 ${m(5)}</span><span style="color:${C.ma20}">MA20 ${m(20)}</span><span style="color:${C.ma60}">MA60 ${m(60)}</span>
+      <span style="color:${C.k}">K ${f1(ind.K[gi])}</span><span style="color:${C.d}">D ${f1(ind.D[gi])}</span><span style="color:${C.j}">J ${f1(ind.J[gi])}</span>
+      <span style="color:${C.dif}">DIF ${f2(gi < 26 ? null : ind.dif[gi])}</span><span style="color:${C.dea}">MACD ${f2(gi < 34 ? null : ind.dea[gi])}</span><span>OSC ${f2(gi < 34 ? null : ind.osc[gi])}</span>`;
     K._geo = { n, padL, padR, W };
   }
   function niceStep(r) { const p = Math.pow(10, Math.floor(Math.log10(r || 1))); const f = r / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }

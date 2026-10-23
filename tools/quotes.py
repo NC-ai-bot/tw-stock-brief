@@ -63,6 +63,13 @@ def watchlist():
             add(x['code'], x['name'], 'i1new', cap=x.get('cap'), stop=x.get('stop_now'), ref=x.get('ref'))
         else:
             add(x['code'], x['name'], 'i1', stop=x.get('stop_now'), entry=x.get('entry'), days=x.get('days'))
+    for x in po.get('exits') or []:
+        add(x['code'], x['name'], 'exit', exit=x.get('exit'), ret=x.get('ret'))
+    ext = load('ext.json') or {}
+    for x in ext.get('list') or []:
+        add(x['code'], x['name'], 'ext', close=x.get('close'))
+    for x in ext.get('opens') or []:
+        add(x['code'], x['name'], 'extopen', entry=x.get('entry'))
     return list(items.values())
 
 
