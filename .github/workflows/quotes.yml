@@ -1,0 +1,31 @@
+name: 盤中報價（每 5 分鐘）
+on:
+  schedule:
+    # 台北 09:00–13:59 週一到五（UTC 01:00–05:59）；收盤後報價不再變動，腳本會自動跳過
+    - cron: '*/5 1-5 * * 1-5'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: quotes
+  cancel-in-progress: false
+jobs:
+  quotes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 抓報價
+        id: q
+        run: |
+          set +e
+          python3 tools/quotes.py
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: 推送
+        if: steps.q.outputs.rc == '0'
+        run: |
+          git config user.name "盤中報價"
+          git config user.email "noreply@anthropic.com"
+          git add docs/data/quotes.json
+          git commit -m "盤中報價 $(TZ=Asia/Taipei date '+%m/%d %H:%M')" || exit 0
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done
+          exit 1

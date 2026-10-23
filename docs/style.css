@@ -168,3 +168,20 @@ body.vopen{overflow:hidden}
 .installtip .iconbtn{width:28px;height:28px;background:none;color:var(--bg);font-size:1.1rem}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 盤中 */
+.lrow{padding:10px 0;border-top:1px solid var(--line)}
+.lrow:first-of-type{border-top:0;padding-top:4px}
+.lrow .hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lrow .code{color:var(--muted);font-size:.86rem}
+.lrow .name{font-weight:600;font-size:1.02rem}
+.lrow .px{margin-left:auto;display:flex;align-items:baseline;gap:8px}
+.lrow .px b{font-size:1.15rem}
+.lrow .px i{font-style:normal;color:var(--muted)}
+.lrow .px em{font-style:normal;font-weight:600;font-size:.9rem}
+.lrow .meta{color:var(--muted);font-size:.8rem;margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+.lrow .meta .t{margin-left:auto}
+.lflag{font-size:.7rem;padding:1px 7px;border-radius:9px;font-weight:500}
+.lflag.ok{background:color-mix(in srgb,var(--w4) 14%,transparent);color:var(--w4)}
+.lflag.over{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
+.lflag.warn{background:color-mix(in srgb,var(--strong) 16%,transparent);color:var(--strong)}

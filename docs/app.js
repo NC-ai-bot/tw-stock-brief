@@ -11,7 +11,7 @@
   const WEB = 'https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ';
 
   const D = {};
-  const FILES = ['meta', 'market', 'market_analysis', 'pool_out', 'pool', 'history', 'archive', 'i1', 'ext'];
+  const FILES = ['meta', 'market', 'market_analysis', 'pool_out', 'pool', 'history', 'archive', 'i1', 'ext', 'quotes'];
 
   async function load(force) {
     const res = await Promise.all(FILES.map(async f => {
@@ -28,6 +28,7 @@
   function render() {
     renderHeader();
     renderToday();
+    renderLive();
     renderPool();
     renderHistory();
     renderLab();
@@ -124,6 +125,70 @@
     </div>`;
   }
   function why(w) { return { stop: '跌破停損', hard: '虧損逾 10%', hold: '持有期滿', st: '跌破趨勢線', time: '持有期滿' }[w] || w || ''; }
+
+
+  // ---------- 盤中 ----------
+  function renderLive() {
+    const el = $('#tab-live');
+    const q = D.quotes;
+    if (!q || !q.items) {
+      el.innerHTML = '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">還沒有盤中資料。開盤時間（09:00–13:30）每 5 分鐘更新一次，池內持股、今日新增與 I1 名單都會在這裡。</p></div></section>';
+      return;
+    }
+    const it = q.items;
+    const closed = !q.market_open;
+    let h = `<p class="note" style="margin:0">${closed ? `今天沒有盤中資料，顯示的是 ${esc(fmtDate(q.data_date))} 的收盤。` : `更新 ${esc(q.updated)}（${esc(q.data_date ? fmtDate(q.data_date) : '')} 盤中）`}・報價來自證交所，延遲約 5–10 分鐘，只供判斷是否碰到上限或出場線。</p>`;
+    const idx = q.index || {};
+    const ik = ['t00', 'o00'].filter(k => idx[k]);
+    if (ik.length) h += `<div class="mkt" style="margin-top:0">${ik.map(k => { const x = idx[k]; return `<span><small>${esc(x.name)}${x.time ? '・' + esc(x.time.slice(0, 5)) : ''}</small><b>${fmt(x.last)}</b><em class="${cls(x.chg_pct)}">${pct(x.chg_pct)}</em></span>`; }).join('')}</div>`;
+
+    const row = (x, kind) => {
+      const last = x.last;
+      let ctx = '', flag = '';
+      if (kind === 'new' || kind === 'i1new') {
+        const cap = x[kind + '_cap'], stop = x[kind + '_stop'];
+        if (cap != null && last != null) {
+          const d = (last / cap - 1) * 100;
+          if (last <= cap) { ctx = `<span>上限 ${fmt(cap)}</span><span>低於上限 ${pct(-d, 1).replace('+', '')}，可買</span>`; flag = '<span class="lflag ok">在上限內</span>'; }
+          else { ctx = `<span>上限 ${fmt(cap)}</span><span>高於上限 ${pct(d, 1)}，不追</span>`; flag = '<span class="lflag over">超過上限</span>'; }
+        } else if (cap != null) ctx = `<span>上限 ${fmt(cap)}</span>`;
+        if (stop != null) ctx += `<span>停損 ${fmt(stop)}</span>`;
+      } else {
+        const stop = x[kind + '_stop'], entry = x[kind + '_entry'];
+        if (entry != null && last != null) ctx = `<span>進場 ${fmt(entry)} → <b class="${cls(last / entry - 1)}">${pct((last / entry - 1) * 100)}</b></span>`;
+        if (stop != null && last != null) {
+          const d = (last / stop - 1) * 100;
+          ctx += `<span>停損 ${fmt(stop)}（距 ${pct(d, 1)}）</span>`;
+          if (last < stop) flag = '<span class="lflag over">現價在停損之下</span>';
+          else if (d < 2) flag = '<span class="lflag warn">接近停損</span>';
+        }
+      }
+      return `<div class="lrow"><div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span>${flag}
+        <span class="px"><b>${last == null ? '—' : fmt(last)}${x.est ? '<i title="尚無成交，以買賣價估計">*</i>' : ''}</b><em class="${cls(x.chg_pct)}">${pct(x.chg_pct)}</em></span></div>
+        <div class="meta">${ctx}${x.time ? `<span class="t">${esc(x.time.slice(0, 5))}</span>` : ''}</div></div>`;
+    };
+    const groups = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1']];
+    let any = false;
+    groups.forEach(([k, title, c]) => {
+      const list = it.filter(x => x.kinds.includes(k));
+      if (!list.length) return;
+      any = true;
+      h += `<section class="sec ${c}"><h2>${title}<span class="cnt">${list.length} 檔</span></h2><div class="body">${list.map(x => row(x, k)).join('')}</div></section>`;
+    });
+    if (!any) h += '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">目前沒有要盯的股票。</p></div></section>';
+    if (it.some(x => x.est)) h += '<p class="note" style="margin:0">* 尚無成交，以買一／賣一估計。</p>';
+    el.innerHTML = h;
+  }
+  function fmtDate(d) { return d && d.length === 8 ? `${+d.slice(4, 6)}/${+d.slice(6)}` : (d || ''); }
+
+  // 盤中自動更新：分頁可見且在交易時段時每 60 秒重抓 quotes.json
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    const tpe = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+    const hm = tpe.getHours() * 60 + tpe.getMinutes(), wd = tpe.getDay();
+    if (wd === 0 || wd === 6 || hm < 9 * 60 || hm > 14 * 60) return;
+    fetch(`data/quotes.json?t=${Date.now()}`, { cache: 'reload' }).then(r => r.ok ? r.json() : null).then(j => { if (j && JSON.stringify(j) !== JSON.stringify(D.quotes)) { D.quotes = j; renderLive(); } }).catch(() => {});
+  }, 60000);
 
   // ---------- 持股 ----------
   function renderPool() {
@@ -246,7 +311,7 @@
     const b = e.target.closest('[data-go]'); if (b) { go(b.dataset.go); }
   });
   const first = (location.hash || '#today').slice(1);
-  go(['today', 'pool', 'history', 'lab'].includes(first) ? first : 'today', false);
+  go(['today', 'live', 'pool', 'history', 'lab'].includes(first) ? first : 'today', false);
 
   $('#refresh').addEventListener('click', () => { $('#refresh').disabled = true; load(true).finally(() => { $('#refresh').disabled = false; }); });
 
