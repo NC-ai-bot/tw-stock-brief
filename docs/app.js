@@ -366,9 +366,13 @@
     const k = K.cache[code], kl = K.cacheL[code];
     let base, adj, name;
     if (p === 'A') {
-      // 還原日K：只有近期名單內的股票有（k/），每天晨報產出時更新
-      if (k) { base = k.bars.slice(); adj = true; name = k.name; }
-      else return { code, name: kl ? kl.name : code, noAdj: true };
+      // 還原日K：用長期未還原日K ＋ FinMind 除權息參考價係數向後還原（股票池全部都有）；名單內的股票再接上 k/ 更新的幾天
+      if (kl) {
+        const dv = await divs();
+        base = adjustBars(kl.bars, (dv[code] || []), code); adj = true; name = kl.name;
+        if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b.slice()); }); }
+      } else if (k) { base = k.bars.slice(); adj = true; name = k.name; }
+      else return { code, name: code, noAdj: true };
     } else if (p === 'D') {
       if (kl) { base = kl.bars.slice(); adj = false; name = kl.name; if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b); }); } }
       else if (k) { base = k.bars.slice(); adj = true; name = k.name; }
@@ -380,6 +384,27 @@
     }
     const lb = liveBar(code, base); if (lb) base.push(lb);
     return { code, name, adj, daily: base, bars: (p === 'D' || p === 'A') ? base : aggregate(base, p) };
+  }
+  let DIVS = null;
+  async function divs() { if (DIVS) return DIVS; try { DIVS = (await getJSON('data/divs_all.json')).data || {}; } catch (e) { DIVS = {}; } return DIVS; }
+  function adjustBars(bars, events, code) {
+    // 向後還原：每個除權息日之前的 o/h/l/c × 係數、量 ÷ 係數（係數＝參考價／前一日收盤，與證交所一致，含減資／分割）
+    const out = bars.map(b => b.slice());
+    if (code === 'TSE01' || code === 'OTC01') return out;
+    const evs = events.slice().sort((x, y) => x[0] < y[0] ? -1 : 1);
+    evs.forEach(([d, f]) => {
+      let i = out.findIndex(b => b[0] >= d);
+      if (i <= 0 || !(f > 0 && f < 1)) return;
+      // 資料庫若已含該日跳空（前收與開盤差距與係數相符）才還原；否則可能是資料缺日，仍以係數為準
+      for (let j = 0; j < i; j++) { const b = out[j]; b[1] *= f; b[2] *= f; b[3] *= f; b[4] *= f; b[5] /= f; }
+    });
+    // 分割／面額變更（係數清單沒有的情況）：開盤比前收低於七成且接近整數倍
+    for (let j = 1; j < out.length; j++) {
+      const prev = out[j - 1][4], o = out[j][1];
+      if (o / prev < 0.7) { for (const k of [2, 3, 4, 5, 10, 20]) { if (Math.abs(o / (prev / k) - 1) <= 0.105) { for (let t = 0; t < j; t++) { const b = out[t]; b[1] /= k; b[2] /= k; b[3] /= k; b[4] /= k; b[5] *= k; } break; } } }
+    }
+    out.forEach(b => { for (let t = 1; t <= 4; t++) b[t] = Math.round(b[t] * 100) / 100; b[5] = Math.round(b[5]); });
+    return out;
   }
   function aggregate(daily, p) {
     const key = d => { const dt = new Date(d + 'T00:00:00'); if (p === 'Y') return d.slice(0, 4); if (p === 'M') return d.slice(0, 7); const t = new Date(dt); t.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -398,7 +423,7 @@
     $('#ctitle').textContent = code; $('#csub').textContent = '載入中…'; $('#clegend').innerHTML = '';
     const s = await series(code);
     if (K.code !== code) return;
-    if (!s || s.noAdj) { $('#ctitle').textContent = s ? `${s.code} ${s.name}` : code; $('#csub').textContent = s && s.noAdj ? '這檔目前不在晨報名單內，沒有還原日K；請改看「日」（未還原）。' : '這檔沒有 K 線資料（不在晨報的股票池裡）。'; K.series = null; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); return; }
+    if (!s || s.noAdj) { $('#ctitle').textContent = s ? `${s.code} ${s.name}` : code; $('#csub').textContent = s && s.noAdj ? '這檔沒有還原日K資料。' : '這檔沒有 K 線資料（不在晨報的股票池裡）。'; K.series = null; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); return; }
     K.series = s;
     drawChart();
   }
@@ -407,7 +432,7 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#chart').hidden) closeChart(); });
   document.addEventListener('click', async e => {
     const pb = e.target.closest('[data-period]');
-    if (pb) { K.period = pb.dataset.period; K.n = PERIODS[K.period].n; K.end = null; K.cur = null; document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('active', b === pb)); if (K.code) { const code = K.code; const s = await series(code); if (!s || s.noAdj) { K.series = null; $('#csub').textContent = s && s.noAdj ? '這檔目前不在晨報名單內，沒有還原日K；請改看「日」（未還原）。' : '沒有資料'; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); } else { K.series = s; drawChart(); } } return; }
+    if (pb) { K.period = pb.dataset.period; K.n = PERIODS[K.period].n; K.end = null; K.cur = null; document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('active', b === pb)); if (K.code) { const code = K.code; const s = await series(code); if (!s || s.noAdj) { K.series = null; $('#csub').textContent = s && s.noAdj ? '這檔沒有還原日K資料。' : '沒有資料'; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); } else { K.series = s; drawChart(); } } return; }
     const sb = e.target.closest('[data-sr]');
     if (sb) { K.sr = !K.sr; sb.classList.toggle('active', K.sr); drawChart(); return; }
     const zb = e.target.closest('[data-zoom]');
