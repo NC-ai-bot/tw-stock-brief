@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header class="top">
@@ -58,11 +58,12 @@
   <div class="ctools">
     <div class="seg"><button type="button" data-period="D" class="active">日</button><button type="button" data-period="W">週</button><button type="button" data-period="M">月</button><button type="button" data-period="Y">年</button></div>
     <div class="seg zoom"><button type="button" data-zoom="left" aria-label="往前">‹</button><button type="button" data-zoom="out" aria-label="縮小">−</button><button type="button" data-zoom="in" aria-label="放大">＋</button><button type="button" data-zoom="right" aria-label="往後">›</button><button type="button" data-zoom="latest">最新</button></div>
+    <div class="seg"><button type="button" data-sr class="active">支撐壓力</button></div>
   </div>
   <div class="cwrap"><canvas id="ccanvas"></canvas></div>
   <div id="crange" class="crange"></div>
   <div id="clegend" class="clegend"></div>
-  <p class="note">點一下 K 棒看當天數值，左右拖曳看更早的資料，雙指或滾輪縮放。日K為除權息還原價；週／月／年K為未還原價（與券商相同）。最右一根在盤中以即時報價累積，收盤後即為當天的 K。虛線為可買入上限、停損（趨勢線）與進場價（日K顯示）。</p>
+  <p class="note">點一下 K 棒看當天數值，左右拖曳看更早的資料，雙指或滾輪縮放。日K為除權息還原價；週／月／年K為未還原價（與券商相同）。最右一根在盤中以即時報價累積，收盤後即為當天的 K。虛線為可買入上限、停損（趨勢線）與進場價（日K顯示）。紅／綠點線是依近期波段高低點自動找出的壓力與支撐（括號為觸碰次數），可用「支撐壓力」按鈕開關；它是技術面參考，不是買賣指令。</p>
 </section>
 
 <div id="install" class="installtip" hidden>
@@ -73,6 +74,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
-<script src="app.js?v=5" defer></script>
+<script src="app.js?v=6" defer></script>
 </body>
 </html>

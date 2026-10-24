@@ -42,8 +42,7 @@ def fetch(code, start, token):
                 if not (o and h and l and c):
                     continue
                 v = float(x.get('Trading_Volume') or 0)
-                if code not in ALIAS:
-                    v = round(v / 1000, 1)   # 股 → 張
+                v = round(v / 1000, 1)   # 股 → 張（指數亦同）
                 rows.append([x['date'], o, h, l, c, v])
             return rows
         except Exception as e:

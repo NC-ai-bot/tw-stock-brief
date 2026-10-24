@@ -335,7 +335,7 @@
 
   // ---------- K 線圖 ----------
   const PERIODS = { D: { label: '日', n: 90, mas: [5, 20, 60] }, W: { label: '週', n: 80, mas: [5, 20, 60] }, M: { label: '月', n: 60, mas: [5, 20, 60] }, Y: { label: '年', n: 12, mas: [3, 5, 10] } };
-  const K = { cache: {}, cacheL: {}, code: null, period: 'D', n: 90, end: null, cur: null, geo: null };
+  const K = { cache: {}, cacheL: {}, code: null, period: 'D', n: 90, end: null, cur: null, geo: null, sr: true };
   function levelsFor(code) {
     const L = [];
     const po = D.pool_out || {}, pool = D.pool || {}, i1 = D.i1 || {};
@@ -406,6 +406,8 @@
   document.addEventListener('click', async e => {
     const pb = e.target.closest('[data-period]');
     if (pb) { K.period = pb.dataset.period; K.n = PERIODS[K.period].n; K.end = null; K.cur = null; document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('active', b === pb)); if (K.code) { K.series = await series(K.code); drawChart(); } return; }
+    const sb = e.target.closest('[data-sr]');
+    if (sb) { K.sr = !K.sr; sb.classList.toggle('active', K.sr); drawChart(); return; }
     const zb = e.target.closest('[data-zoom]');
     if (zb) { const z = zb.dataset.zoom; if (z === 'in') K.n = Math.max(20, Math.round(K.n / 1.4)); else if (z === 'out') K.n = Math.min(600, Math.round(K.n * 1.4)); else if (z === 'left') K.end = (K.end == null ? total() : K.end) - Math.round(K.n / 2); else if (z === 'right') K.end = (K.end == null ? total() : K.end) + Math.round(K.n / 2); else if (z === 'latest') K.end = null; clampView(); drawChart(); return; }
     if (e.target.closest('a,button:not([data-k]),summary,input')) return;
@@ -444,7 +446,7 @@
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement);
     const col = v => css.getPropertyValue(v).trim();
-    const C = { up: col('--up'), down: col('--down'), muted: col('--muted'), line: col('--line'), fg: col('--fg'), paper: col('--paper'), bg: col('--bg'), ma1: '#e39b2e', ma2: '#3a7bd5', ma3: '#9b59b6', k: '#e39b2e', d: '#3a7bd5', j: '#c04fd0', dif: '#e39b2e', dea: '#3a7bd5' };
+    const C = { up: col('--up'), down: col('--down'), muted: col('--muted'), line: col('--line'), fg: col('--fg'), paper: col('--paper'), bg: col('--bg'), ma1: '#e39b2e', ma2: '#3a7bd5', ma3: '#9b59b6', res: '#c0392b', sup: '#1f8a4c', k: '#e39b2e', d: '#3a7bd5', j: '#c04fd0', dif: '#e39b2e', dea: '#3a7bd5' };
     const FONT = css.getPropertyValue('--sans');
     const all = s.bars, ind = indicators(all);
     clampView();
@@ -466,10 +468,12 @@
     const x = i => padL + (i + 0.5) * plotW / n;
     const bw = Math.max(1.5, plotW / n * 0.62);
     const levels = levelsFor(K.code).filter(l => l.v > 0);
+    let sr = K.sr ? srLevels(all, endI, K.period) : [];
     let lo = Infinity, hi = -Infinity;
     bars.forEach(b => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); });
     bars.forEach((b, i) => ph.mas.forEach(p => { const m = ma(closes, p, off + i); if (m != null) { lo = Math.min(lo, m); hi = Math.max(hi, m); } }));
     if (K.period === 'D') levels.forEach(l => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
+    { const pad0 = (hi - lo) * 0.06 || 1; sr = sr.filter(l => l.v >= lo - pad0 && l.v <= hi + pad0); }
     const padP = (hi - lo) * 0.06 || 1; lo -= padP; hi += padP;
     const y = v => P.top + (hi - v) / (hi - lo) * P.h;
     const vmax = Math.max(...bars.map(b => b[5]), 1);
@@ -498,11 +502,18 @@
       ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x(i), y(b[2])); ctx.lineTo(x(i), y(b[3])); ctx.stroke();
       const o = y(b[1]), c = y(b[4]);
-      if (upc) { ctx.fillStyle = C.paper; ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); ctx.strokeRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o))); }
-      else ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o)));
+      ctx.fillRect(x(i) - bw / 2, Math.min(o, c), bw, Math.max(1, Math.abs(c - o)));
       ctx.globalAlpha = 0.55; ctx.fillStyle = color; ctx.fillRect(x(i) - bw / 2, vy(b[5]), bw, V.top + V.h - vy(b[5])); ctx.globalAlpha = 1;
     });
     if (isLive && K.end == null) { ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.font = '10px ' + FONT; ctx.fillText(D.quotes && D.quotes.market_open && marketPhase() === 'open' ? '最右一根為今日（盤中累積）' : '最右一根為今日', W - padR - 2, P.top + 2); ctx.font = '11px ' + FONT; }
+    const used = [];
+    sr.forEach(l => {
+      const color = l.kind === 'R' ? C.res : C.sup;
+      const ly = y(l.v); const clash = used.some(u => Math.abs(u - ly) < 13); used.push(ly);
+      ctx.strokeStyle = color; ctx.setLineDash([2, 3]); ctx.lineWidth = 1; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(padL, y(l.v)); ctx.lineTo(W - padR, y(l.v)); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = color; ctx.textAlign = clash ? 'left' : 'right'; ctx.textBaseline = l.kind === 'R' ? 'bottom' : 'top'; ctx.font = '10px ' + FONT;
+      ctx.fillText(`${l.kind === 'R' ? '壓力' : '支撐'} ${fmt(l.v)}（${l.n} 次）`, clash ? padL + 3 : W - padR - 3, ly + (l.kind === 'R' ? -1 : 1)); ctx.font = '11px ' + FONT;
+    });
     if (K.period === 'D') levels.forEach(l => {
       const color = col(l.color);
       ctx.strokeStyle = color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(padL, y(l.v)); ctx.lineTo(W - padR, y(l.v)); ctx.stroke(); ctx.setLineDash([]);
@@ -533,6 +544,40 @@
       <span style="color:${C.dif}">DIF ${f2(gi < 26 ? null : ind.dif[gi])}</span><span style="color:${C.dea}">MACD ${f2(gi < 34 ? null : ind.dea[gi])}</span><span>OSC ${f2(gi < 34 ? null : ind.osc[gi])}</span>`;
     $('#crange').textContent = `${bars[0][0]} ～ ${bars[n - 1][0]}・${n} 根`;
     K.geo = { n, padL, padR, W, plotW };
+  }
+  // 支撐壓力：近期波段高低點分群（價位相近視為同一區），依觸碰次數與新舊排序，現價上方取壓力、下方取支撐
+  function srLevels(all, endI, period) {
+    const look = period === 'D' ? 160 : period === 'W' ? 120 : period === 'M' ? 60 : 0;
+    if (!look) return [];
+    const k = period === 'D' ? 3 : 2;
+    const from = Math.max(0, endI - look), seg = all.slice(from, endI), n = seg.length;
+    if (n < k * 2 + 5) return [];
+    const last = seg[n - 1][4];
+    const piv = [];
+    for (let i = k; i < n - k; i++) {
+      let ph = true, pl = true;
+      for (let j = i - k; j <= i + k; j++) { if (j === i) continue; if (seg[j][2] >= seg[i][2]) ph = false; if (seg[j][3] <= seg[i][3]) pl = false; }
+      if (ph) piv.push({ v: seg[i][2], i, t: 'H' });
+      if (pl) piv.push({ v: seg[i][3], i, t: 'L' });
+    }
+    // 加入區間最高／最低
+    let hiI = 0, loI = 0; seg.forEach((b, i) => { if (b[2] > seg[hiI][2]) hiI = i; if (b[3] < seg[loI][3]) loI = i; });
+    piv.push({ v: seg[hiI][2], i: hiI, t: 'H' }); piv.push({ v: seg[loI][3], i: loI, t: 'L' });
+    piv.sort((a, b) => a.v - b.v);
+    const tol = Math.max(last * 0.012, (seg[hiI][2] - seg[loI][3]) / 60);
+    const groups = [];
+    piv.forEach(p => { const g = groups[groups.length - 1]; if (g && p.v - g.v0 <= tol) { g.items.push(p); } else groups.push({ v0: p.v, items: [p] }); });
+    const out = groups.map(g => {
+      const ids = new Set(g.items.map(p => p.i));
+      const v = g.items.reduce((s, p) => s + p.v, 0) / g.items.length;
+      const rec = Math.max(...g.items.map(p => p.i)) / n;
+      return { v, n: ids.size, score: ids.size * 1.0 + rec * 1.2 + (g.items.some(p => p.i === hiI || p.i === loI) ? 0.6 : 0) };
+    }).filter(g => Math.abs(g.v - last) / last > 0.004);
+    const near = out.filter(g => Math.abs(g.v - last) / last <= 0.25);
+    const pickSide = (list, kind) => list.sort((a, b) => b.score - a.score).slice(0, 4).sort((a, b) => Math.abs(a.v - last) - Math.abs(b.v - last)).slice(0, 2).map(g => Object.assign({ kind }, g));
+    const R = pickSide(near.filter(g => g.v > last), 'R');
+    const S = pickSide(near.filter(g => g.v < last), 'S');
+    return R.concat(S);
   }
   function niceStep(r) { const p = Math.pow(10, Math.floor(Math.log10(r || 1))); const f = r / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
   // 手勢：點＝十字線；拖曳＝平移；雙指＝縮放
