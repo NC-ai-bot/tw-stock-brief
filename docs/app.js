@@ -163,7 +163,7 @@
         const mx = Math.max(1, ...bv, ...av);
         const row = (v, p, side) => `<div class="l5 ${side}"><span class="v" style="--w:${(v / mx * 100).toFixed(0)}%">${v != null ? fmt(v, 0) : ''}</span><span class="p">${p != null ? fmtP(p) : ''}</span></div>`;
         five = `<div class="five"><div class="col"><div class="hd">買進</div>${[0, 1, 2, 3, 4].map(i => row(bv[i], b[i], 'b')).join('')}</div><div class="col"><div class="hd">賣出</div>${[0, 1, 2, 3, 4].map(i => row(av[i], a[i], 'a')).join('')}</div></div>`;
-      } else five = `<p class="note" style="margin:4px 0">${LIVE.ok ? '目前沒有五檔掛單資料' : '五檔掛單要在即時報價連線時才有'}</p>`;
+      } else five = `<p class="note" style="margin:4px 0">${LIVE.ok ? '目前沒有五檔掛單資料' : '五檔掛單要連上即時報價才有（連線中…）'}</p>`;
     }
     return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `分時走勢（${LIVE.ticks[code].length} 筆，從本機開始接收的時間起）` : '分時走勢：開盤後、app 開著的期間會持續累積'}</div></div>`;
   }
@@ -230,7 +230,8 @@
   function statLine(q, phase) {
     const live = q.market_open && phase === 'open';
     if (LIVE.ok && phase === 'open') return `<span class="dot on"></span>即時・${esc(LIVE.at || '')}<small>證交所即時報價，每 ${LIVE.every / 1000} 秒更新（約 5 秒延遲）</small>`;
-    return `<span class="dot ${live ? 'on' : ''}"></span>${live ? `盤中・${esc(q.updated.slice(11))} 更新` : q.market_open ? `${esc(fmtD8(q.data_date))} 收盤` : `最近收盤 ${esc(fmtD8(q.data_date))}`}<small>${LIVE.ok === false && phase === 'open' ? '即時連線失敗，改用 5 分鐘一次的報價' : '證交所報價，延遲約 5–10 分鐘'}</small>`;
+    const note = LIVE.ok === false ? (phase === 'open' ? '即時連線失敗，改用 5 分鐘一次的報價' : '即時連線失敗（開盤後會改用 5 分鐘一次的報價）') : LIVE.ok ? '即時連線正常，開盤後每 3 秒更新' : '證交所報價，延遲約 5–10 分鐘';
+    return `<span class="dot ${live ? 'on' : ''}"></span>${live ? `盤中・${esc(q.updated.slice(11))} 更新` : q.market_open ? `${esc(fmtD8(q.data_date))} 收盤` : `最近收盤 ${esc(fmtD8(q.data_date))}`}<small>${note}</small>`;
   }
   // 只換掉有變化的卡片（不整頁重畫，避免搜尋框失焦、畫面跳動）
   function patchLive() {
@@ -267,9 +268,13 @@
   function loadTicks() { try { const raw = localStorage.getItem(tlKey()); if (raw) LIVE.ticks = JSON.parse(raw) || {}; Object.keys(localStorage).forEach(k => { if (k.startsWith('tl-') && k !== tlKey()) localStorage.removeItem(k); }); } catch (e) {} }
   let tlSaved = 0;
   function saveTicks() { const now = Date.now(); if (now - tlSaved < 15000) return; tlSaved = now; try { localStorage.setItem(tlKey(), JSON.stringify(LIVE.ticks)); } catch (e) {} }
-  async function livePoll() {
-    if (LIVE.busy || document.visibilityState !== 'visible' || marketPhase() !== 'open') return;
+  let liveLast = 0;
+  async function livePoll(force) {
+    if (LIVE.busy || document.visibilityState !== 'visible') return;
+    const open = marketPhase() === 'open';
+    if (!open && !force && Date.now() - liveLast < 60000) return; // 非交易時段每 60 秒確認一次（看得到收盤五檔、確認連線）
     const q = D.quotes; if (!q) return;
+    liveLast = Date.now();
     LIVE.busy = true;
     try {
       const uni = await universe();
@@ -283,10 +288,11 @@
         const tgt = it.code === 'TSE01' ? (q.index.t00 = q.index.t00 || { code: 't00', name: '加權指數' }) : it.code === 'OTC01' ? (q.index.o00 = q.index.o00 || { code: 'o00', name: '櫃買指數' }) : (q.items.find(x => x.code === it.code) || (q.items.push({ code: it.code, name: it.name, kinds: [] }), q.items[q.items.length - 1]));
         Object.assign(tgt, { last: it.last, est: it.est, chg: it.chg, chg_pct: it.pct, open: it.open, high: it.high, low: it.low, prev: it.prev, vol: it.vol, bid: it.bid[0] != null ? it.bid[0] : null, ask: it.ask[0] != null ? it.ask[0] : null, bid5: it.bid, ask5: it.ask, bidv5: it.bidv, askv5: it.askv, date: it.date, time: it.time });
         if (it.name && !tgt.name) tgt.name = it.name;
-        if (it.time && !it.est) { const arr = LIVE.ticks[it.code] = LIVE.ticks[it.code] || []; const lastT = arr.length ? arr[arr.length - 1] : null; if (!lastT || lastT[0] !== it.time) { arr.push([it.time, it.last, it.vol]); if (arr.length > 2000) arr.shift(); } }
+        if (open && it.time && !it.est) { const arr = LIVE.ticks[it.code] = LIVE.ticks[it.code] || []; const lastT = arr.length ? arr[arr.length - 1] : null; if (!lastT || lastT[0] !== it.time) { arr.push([it.time, it.last, it.vol]); if (arr.length > 2000) arr.shift(); } }
       });
       const t = tpeNow(); LIVE.at = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}`;
-      q.market_open = true; q.data_date = (j.items.find(i => i.date) || {}).date || q.data_date; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`;
+      q.data_date = (j.items.find(i => i.date) || {}).date || q.data_date;
+      if (open) { q.market_open = true; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`; }
       LIVE.ok = true; saveTicks();
       if (!$('#tab-live').hidden) patchLive();
       if (!$('#chart').hidden) drawChart();
@@ -296,7 +302,8 @@
   }
   loadTicks();
   setInterval(livePoll, LIVE.every);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(true); });
+  setTimeout(() => livePoll(true), 1500);
   function ctxFor(x, kind) {
       const last = x.last; let ctx = '', flag = '';
       if (kind === 'new' || kind === 'i1new') {
