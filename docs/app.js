@@ -165,7 +165,7 @@
         five = `<div class="five"><div class="col"><div class="hd">買進</div>${[0, 1, 2, 3, 4].map(i => row(bv[i], b[i], 'b')).join('')}</div><div class="col"><div class="hd">賣出</div>${[0, 1, 2, 3, 4].map(i => row(av[i], a[i], 'a')).join('')}</div></div>`;
       } else five = `<p class="note" style="margin:4px 0">${LIVE.ok ? '目前沒有五檔掛單資料' : '五檔掛單要連上即時報價才有（連線中…）'}</p>`;
     }
-    return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `分時走勢（${LIVE.ticks[code].length} 筆，從本機開始接收的時間起）` : '分時走勢：開盤後、app 開著的期間會持續累積'}</div></div>`;
+    return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `分時走勢（${LIVE.ticks[code].length} 筆）` : '分時走勢：開盤後每分鐘自動累積，開著 app 時每 3 秒一筆'}</div></div>`;
   }
   // 分時走勢：x 軸 09:00–13:30，y 軸以昨收為基準
   function drawTL(cv) {
@@ -301,6 +301,22 @@
     } finally { LIVE.busy = false; }
   }
   loadTicks();
+  // 伺服器端每分鐘累積的整天分時（Worker Cron → KV）：打開 app 就先載回來，之後本機 3 秒一筆接著畫
+  let tlServerDay = null;
+  async function loadServerTicks() {
+    const day = tlKey().slice(3); if (tlServerDay === day) return;
+    try {
+      const r = await fetch(`${LIVE.url}/tl?date=${day}`, { cache: 'no-store' }); if (!r.ok) return;
+      const j = await r.json(); tlServerDay = day;
+      Object.keys(j).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); LIVE.ticks[code] = [...m.values()].sort((a, b) => a[0] < b[0] ? -1 : 1); });
+      tlSaved = 0; saveTicks();
+      if (!$('#tab-live').hidden) drawAllTL($('#tab-live'));
+      if (!$('#chart').hidden && K.period === 'T') drawChart();
+    } catch (e) {}
+  }
+  setTimeout(loadServerTicks, 800);
+  setInterval(() => { if (document.visibilityState === 'visible' && marketPhase() === 'open') loadServerTicks(); }, 120000); // 盤中每 2 分鐘補一次（別台裝置開著時也能同步）
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { tlServerDay = null; loadServerTicks(); } });
   setInterval(livePoll, LIVE.every);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(true); });
   setTimeout(() => livePoll(true), 1500);
@@ -823,7 +839,7 @@
     ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('成交量（張）', padL + 2, V.top - 11);
     if (!ticks.length) {
       ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '13px ' + FONT;
-      ctx.fillText(open ? (LIVE.ok === false ? '即時報價連線失敗，無法畫分時' : '等待即時報價…') : '分時走勢在開盤後、app 開著的期間累積（每 3 秒一筆）', padL + plotW / 2, P.top + P.h / 2);
+      ctx.fillText(open ? (LIVE.ok === false ? '即時報價連線失敗，無法畫分時' : '等待即時報價…') : '分時走勢：開盤後每分鐘自動累積（不用開著 app），開著時每 3 秒一筆', padL + plotW / 2, P.top + P.h / 2);
       if (item && item.last != null && item.time && ymd8(item.date || '') === day) { const px = xs(item.time); ctx.fillStyle = item.last >= prev ? C.up : C.down; ctx.beginPath(); ctx.arc(px, y(item.last), 3, 0, Math.PI * 2); ctx.fill(); ctx.font = '10px ' + FONT; ctx.textAlign = 'right'; ctx.fillText(`${item.time.slice(0, 5)} 收 ${fmt(item.last)}`, px - 6, y(item.last)); }
       $('#clegend').innerHTML = `<span class="d">${esc(day)}</span><span>昨收 ${fmt(prev)}</span>${item && item.high != null ? `<span>高 ${fmt(item.high)}</span><span>低 ${fmt(item.low)}</span><span>量 ${fmt(item.vol || 0, 0)} 張</span>` : ''}`;
       $('#crange').textContent = '09:00 ～ 13:30'; K.geo = { n: 270, padL, padR, W, plotW, T: true };
