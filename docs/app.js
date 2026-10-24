@@ -125,28 +125,79 @@
 
   // ---------- 盤中（報價板） ----------
   function tpeNow() { return new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000); }
+  const FORCE_LIVE = new URLSearchParams(location.search).get('live') === '1';
   function marketPhase() {
+    if (FORCE_LIVE) return 'open';
     const t = tpeNow(), hm = t.getHours() * 60 + t.getMinutes(), wd = t.getDay();
     if (wd === 0 || wd === 6) return 'closed';
     if (hm < 9 * 60) return 'pre';
     if (hm <= 13 * 60 + 35) return 'open';
     return 'after';
   }
+  const OPEN5 = new Set(); // 展開「五檔／分時」的卡片
   function quoteCard(x, opts) {
     const o = opts || {};
     const last = x.last, chg = x.chg != null ? x.chg : (last != null && x.prev ? last - x.prev : null);
     const c = cls(chg);
     const big = o.index;
-    return `<div class="qc ${c} ${big ? 'qc-idx' : ''}" data-k="${esc(o.code || x.code)}">
-      <div class="qh"><span class="qn">${esc(x.name)}</span><span class="qcode">${big ? '' : esc(x.code)}</span>${o.flag || ''}<span class="qt">${x.time ? esc(x.time.slice(0, 5)) : ''}</span></div>
+    const code = o.code || x.code;
+    const open5 = OPEN5.has(code);
+    const live = LIVE.ok && x.time;
+    return `<div class="qc ${c} ${big ? 'qc-idx' : ''} ${open5 ? 'open5' : ''}" data-k="${esc(code)}">
+      <div class="qh"><span class="qn">${esc(x.name)}</span><span class="qcode">${big ? '' : esc(x.code)}</span>${o.flag || ''}<span class="qt">${x.time ? esc(live ? x.time : x.time.slice(0, 5)) : ''}</span></div>
       <div class="qp"><b>${last == null ? '—' : fmtP(last)}${x.est ? '<i title="尚無成交，以買賣價估計">*</i>' : ''}</b><span class="qd"><em>${sgn(chg, big ? 2 : 2)}</em><em>${pct(x.chg_pct)}</em></span></div>
       <div class="qg">
         <span><small>開</small>${fmtP(x.open)}</span><span><small>高</small>${fmtP(x.high)}</span><span><small>低</small>${fmtP(x.low)}</span><span><small>昨收</small>${fmtP(x.prev)}</span>
         ${big ? `<span><small>振幅</small>${x.high != null && x.low != null && x.prev ? ((x.high - x.low) / x.prev * 100).toFixed(2) + '%' : '—'}</span>` : `<span><small>買</small>${fmtP(x.bid)}</span><span><small>賣</small>${fmtP(x.ask)}</span><span><small>量</small>${x.vol != null ? fmt(x.vol, 0) : '—'}</span>`}
       </div>
       ${o.ctx ? `<div class="qx">${o.ctx}</div>` : ''}
+      <button type="button" class="qfive" data-five="${esc(code)}" aria-expanded="${open5}">${open5 ? '收合' : (big ? '分時走勢' : '五檔・分時')}</button>
+      ${open5 ? fivePanel(x, code, big) : ''}
     </div>`;
   }
+  function fivePanel(x, code, big) {
+    let five = '';
+    if (!big) {
+      const b = x.bid5 || [], a = x.ask5 || [], bv = x.bidv5 || [], av = x.askv5 || [];
+      if (b.length || a.length) {
+        const mx = Math.max(1, ...bv, ...av);
+        const row = (v, p, side) => `<div class="l5 ${side}"><span class="v" style="--w:${(v / mx * 100).toFixed(0)}%">${v != null ? fmt(v, 0) : ''}</span><span class="p">${p != null ? fmtP(p) : ''}</span></div>`;
+        five = `<div class="five"><div class="col"><div class="hd">買進</div>${[0, 1, 2, 3, 4].map(i => row(bv[i], b[i], 'b')).join('')}</div><div class="col"><div class="hd">賣出</div>${[0, 1, 2, 3, 4].map(i => row(av[i], a[i], 'a')).join('')}</div></div>`;
+      } else five = `<p class="note" style="margin:4px 0">${LIVE.ok ? '目前沒有五檔掛單資料' : '五檔掛單要在即時報價連線時才有'}</p>`;
+    }
+    return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `分時走勢（${LIVE.ticks[code].length} 筆，從本機開始接收的時間起）` : '分時走勢：開盤後、app 開著的期間會持續累積'}</div></div>`;
+  }
+  // 分時走勢：x 軸 09:00–13:30，y 軸以昨收為基準
+  function drawTL(cv) {
+    const code = cv.dataset.tl; const wrap = cv.parentElement; const W = wrap.clientWidth - 2, H = 120;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3); cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px';
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim();
+    const item = code === 'TSE01' ? (D.quotes.index || {}).t00 : code === 'OTC01' ? (D.quotes.index || {}).o00 : (D.quotes.items || []).find(i => i.code === code);
+    const ticks = (LIVE.ticks[code] || []).slice();
+    if (!ticks.length && item && item.last != null && item.time) ticks.push([item.time, item.last]);
+    const prev = item && item.prev; if (!prev) return;
+    const padL = 4, padR = 44, padT = 8, padB = 16, pw = W - padL - padR, ph = H - padT - padB;
+    const tmin = 9 * 3600, tmax = 13.5 * 3600;
+    const sec = t => { const [h, m, s] = t.split(':').map(Number); return h * 3600 + m * 60 + (s || 0); };
+    let lo = prev, hi = prev; ticks.forEach(t => { lo = Math.min(lo, t[1]); hi = Math.max(hi, t[1]); });
+    const span = Math.max(hi - prev, prev - lo, prev * 0.005); lo = prev - span * 1.05; hi = prev + span * 1.05;
+    const x = t => padL + (Math.min(tmax, Math.max(tmin, sec(t))) - tmin) / (tmax - tmin) * pw, y = v => padT + (hi - v) / (hi - lo) * ph;
+    ctx.clearRect(0, 0, W, H); ctx.font = '10px ' + css.getPropertyValue('--sans'); ctx.textBaseline = 'middle';
+    ctx.strokeStyle = col('--line'); ctx.lineWidth = 1; [tmin, 10 * 3600, 11 * 3600, 12 * 3600, 13 * 3600, tmax].forEach(s => { const px = padL + (s - tmin) / (tmax - tmin) * pw; ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT + ph); ctx.stroke(); });
+    ctx.fillStyle = col('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ['9', '10', '11', '12', '13'].forEach((t, i) => ctx.fillText(t, padL + (i * 3600) / (tmax - tmin) * pw, padT + ph + 3)); ctx.fillText('13:30', padL + pw, padT + ph + 3);
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = '#d4a017'; ctx.beginPath(); ctx.moveTo(padL, y(prev)); ctx.lineTo(padL + pw, y(prev)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d4a017'; ctx.fillText(fmtP(prev), padL + pw + 3, y(prev));
+    ctx.fillStyle = col('--up'); ctx.fillText('+' + (span / prev * 100).toFixed(1) + '%', padL + pw + 3, padT + 4); ctx.fillStyle = col('--down'); ctx.fillText('-' + (span / prev * 100).toFixed(1) + '%', padL + pw + 3, padT + ph - 4);
+    if (!ticks.length) return;
+    const last = ticks[ticks.length - 1][1]; const color = last >= prev ? col('--up') : col('--down');
+    ctx.beginPath(); ticks.forEach((t, i) => { const px = x(t[0]), py = y(t[1]); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+    const lx = x(ticks[ticks.length - 1][0]);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.lineTo(lx, y(prev)); ctx.lineTo(x(ticks[0][0]), y(prev)); ctx.closePath(); ctx.fillStyle = color; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx, y(last), 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawAllTL(root) { (root || document).querySelectorAll('canvas.tl').forEach(drawTL); }
   function renderLive() {
     const el = $('#tab-live');
     const q = D.quotes;
@@ -157,13 +208,96 @@
       return;
     }
     const it = q.items;
-    const live = q.market_open && phase === 'open';
-    h += `<div class="lstat"><span class="dot ${live ? 'on' : ''}"></span>${live ? `盤中・${esc(q.updated.slice(11))} 更新` : q.market_open ? `${esc(fmtD8(q.data_date))} 收盤` : `最近收盤 ${esc(fmtD8(q.data_date))}`}<small>證交所報價，延遲約 5–10 分鐘</small></div>`;
+    h += `<div class="lstat">${statLine(q, phase)}</div>`;
     const idx = q.index || {};
     const ik = [['t00', 'TSE01'], ['o00', 'OTC01']].filter(([k]) => idx[k]);
     if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}</div>`;
+    const groups = LGROUPS;
+    let any = false;
+    groups.forEach(([k, title, c]) => {
+      const list = it.filter(x => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen') && !x.kinds.includes('ext')));
+      if (!list.length) return;
+      any = true;
+      h += `<section class="sec ${c}"><h2>${title}<span class="cnt">${list.length} 檔</span></h2><div class="qgrid">${list.map(x => { const { ctx, flag } = ctxFor(x, k); return quoteCard(x, { ctx, flag }); }).join('')}</div></section>`;
+    });
+    if (!any) h += '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">目前沒有要盯的股票。</p></div></section>';
+    if (it.some(x => x.est)) h += '<p class="note" style="margin:0">* 尚無成交，以買一／賣一估計。</p>';
+    h += searchBox();
+    el.innerHTML = h;
+    drawAllTL(el);
+  }
+  const LGROUPS = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['exit', '今日出場', 'down'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1'], ['ext', '趨勢延續觀察（測試）', 'strong']];
+  function statLine(q, phase) {
+    const live = q.market_open && phase === 'open';
+    if (LIVE.ok && phase === 'open') return `<span class="dot on"></span>即時・${esc(LIVE.at || '')}<small>證交所即時報價，每 ${LIVE.every / 1000} 秒更新（約 5 秒延遲）</small>`;
+    return `<span class="dot ${live ? 'on' : ''}"></span>${live ? `盤中・${esc(q.updated.slice(11))} 更新` : q.market_open ? `${esc(fmtD8(q.data_date))} 收盤` : `最近收盤 ${esc(fmtD8(q.data_date))}`}<small>${LIVE.ok === false && phase === 'open' ? '即時連線失敗，改用 5 分鐘一次的報價' : '證交所報價，延遲約 5–10 分鐘'}</small>`;
+  }
+  // 只換掉有變化的卡片（不整頁重畫，避免搜尋框失焦、畫面跳動）
+  function patchLive() {
+    const el = $('#tab-live'); const q = D.quotes; if (!q || !q.items) return;
+    const st = el.querySelector('.lstat'); if (st) st.innerHTML = statLine(q, marketPhase());
+    const put = (code, html) => { const old = el.querySelector(`.qc[data-k="${code}"]`); if (!old) return; if (old.outerHTML === html) return; const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; old.replaceWith(nu); drawAllTL(nu); };
+    const idx = q.index || {};
+    if (idx.t00) put('TSE01', quoteCard(idx.t00, { index: true, code: 'TSE01' }));
+    if (idx.o00) put('OTC01', quoteCard(idx.o00, { index: true, code: 'OTC01' }));
+    q.items.forEach(x => { const k = LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen'))); if (!k) return; const { ctx, flag } = ctxFor(x, k); put(x.code, quoteCard(x, { ctx, flag })); });
+  }
+  // 五檔／分時展開
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-five]'); if (!b) return;
+    e.stopPropagation(); const code = b.dataset.five;
+    if (OPEN5.has(code)) OPEN5.delete(code); else OPEN5.add(code);
+    const q = D.quotes || {}; const x = code === 'TSE01' ? (q.index || {}).t00 : code === 'OTC01' ? (q.index || {}).o00 : (q.items || []).find(i => i.code === code);
+    if (!x) return;
+    const card = b.closest('.qc'); const kind = code === 'TSE01' || code === 'OTC01' ? null : LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen')));
+    const o = kind ? ctxFor(x, kind) : {}; const html = quoteCard(x, kind ? { ctx: o.ctx, flag: o.flag } : { index: true, code });
+    const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; card.replaceWith(nu); drawAllTL(nu);
+  }, true);
 
-    const ctxFor = (x, kind) => {
+  // ---------- 即時報價（Cloudflare Worker 中繼證交所報價，交易時段每 3 秒） ----------
+  const LIVE = { url: 'https://tw-quotes.nickchen358.workers.dev', every: 3000, ok: null, at: '', ticks: {}, busy: false, timer: null, uni: null };
+  async function universe() { if (LIVE.uni) return LIVE.uni; try { LIVE.uni = await getJSON('data/universe.json'); } catch (e) { LIVE.uni = {}; } return LIVE.uni; }
+  function liveCodes() {
+    const q = D.quotes || {}; const set = new Set(['TSE01', 'OTC01']);
+    (q.items || []).forEach(x => set.add(x.code));
+    if (K.code && !$('#chart').hidden) set.add(K.code);
+    return [...set];
+  }
+  function tlKey() { const t = tpeNow(); return `tl-${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}`; }
+  function loadTicks() { try { const raw = localStorage.getItem(tlKey()); if (raw) LIVE.ticks = JSON.parse(raw) || {}; Object.keys(localStorage).forEach(k => { if (k.startsWith('tl-') && k !== tlKey()) localStorage.removeItem(k); }); } catch (e) {} }
+  let tlSaved = 0;
+  function saveTicks() { const now = Date.now(); if (now - tlSaved < 15000) return; tlSaved = now; try { localStorage.setItem(tlKey(), JSON.stringify(LIVE.ticks)); } catch (e) {} }
+  async function livePoll() {
+    if (LIVE.busy || document.visibilityState !== 'visible' || marketPhase() !== 'open') return;
+    const q = D.quotes; if (!q) return;
+    LIVE.busy = true;
+    try {
+      const uni = await universe();
+      const codes = liveCodes(); const otc = codes.filter(c => uni[c] && uni[c].ex === 'otc');
+      const r = await fetch(`${LIVE.url}/q?codes=${codes.join(',')}${otc.length ? '&otc=' + otc.join(',') : ''}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json(); if (!j.items) throw new Error('bad');
+      q.index = q.index || {}; q.items = q.items || [];
+      j.items.forEach(it => {
+        if (!it.code || it.last == null) return;
+        const tgt = it.code === 'TSE01' ? (q.index.t00 = q.index.t00 || { code: 't00', name: '加權指數' }) : it.code === 'OTC01' ? (q.index.o00 = q.index.o00 || { code: 'o00', name: '櫃買指數' }) : (q.items.find(x => x.code === it.code) || (q.items.push({ code: it.code, name: it.name, kinds: [] }), q.items[q.items.length - 1]));
+        Object.assign(tgt, { last: it.last, est: it.est, chg: it.chg, chg_pct: it.pct, open: it.open, high: it.high, low: it.low, prev: it.prev, vol: it.vol, bid: it.bid[0] != null ? it.bid[0] : null, ask: it.ask[0] != null ? it.ask[0] : null, bid5: it.bid, ask5: it.ask, bidv5: it.bidv, askv5: it.askv, date: it.date, time: it.time });
+        if (it.name && !tgt.name) tgt.name = it.name;
+        if (it.time && !it.est) { const arr = LIVE.ticks[it.code] = LIVE.ticks[it.code] || []; const lastT = arr.length ? arr[arr.length - 1] : null; if (!lastT || lastT[0] !== it.time) { arr.push([it.time, it.last, it.vol]); if (arr.length > 2000) arr.shift(); } }
+      });
+      const t = tpeNow(); LIVE.at = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}`;
+      q.market_open = true; q.data_date = (j.items.find(i => i.date) || {}).date || q.data_date; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`;
+      LIVE.ok = true; saveTicks();
+      if (!$('#tab-live').hidden) patchLive();
+      if (!$('#chart').hidden) drawChart();
+    } catch (e) {
+      if (LIVE.ok !== false) { LIVE.ok = false; if (!$('#tab-live').hidden) patchLive(); }
+    } finally { LIVE.busy = false; }
+  }
+  loadTicks();
+  setInterval(livePoll, LIVE.every);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(); });
+  function ctxFor(x, kind) {
       const last = x.last; let ctx = '', flag = '';
       if (kind === 'new' || kind === 'i1new') {
         const cap = x[kind + '_cap'], stop = x[kind + '_stop'];
@@ -189,19 +323,6 @@
         }
       }
       return { ctx, flag };
-    };
-    const groups = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['exit', '今日出場', 'down'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1'], ['ext', '趨勢延續觀察（測試）', 'strong']];
-    let any = false;
-    groups.forEach(([k, title, c]) => {
-      const list = it.filter(x => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen') && !x.kinds.includes('ext')));
-      if (!list.length) return;
-      any = true;
-      h += `<section class="sec ${c}"><h2>${title}<span class="cnt">${list.length} 檔</span></h2><div class="qgrid">${list.map(x => { const { ctx, flag } = ctxFor(x, k); return quoteCard(x, { ctx, flag }); }).join('')}</div></section>`;
-    });
-    if (!any) h += '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">目前沒有要盯的股票。</p></div></section>';
-    if (it.some(x => x.est)) h += '<p class="note" style="margin:0">* 尚無成交，以買一／賣一估計。</p>';
-    h += searchBox();
-    el.innerHTML = h;
   }
   function fmtD8(d) { return d && d.length === 8 ? `${+d.slice(4, 6)}/${+d.slice(6)}` : (d || ''); }
   function searchBox() {
@@ -209,7 +330,7 @@
   }
   // 自動更新：交易時段每 60 秒重抓 quotes.json
   setInterval(() => {
-    if (document.visibilityState !== 'visible' || marketPhase() !== 'open') return;
+    if (document.visibilityState !== 'visible' || marketPhase() !== 'open' || LIVE.ok) return;
     fetch(`data/quotes.json?t=${Date.now()}`, { cache: 'reload' }).then(r => r.ok ? r.json() : null).then(j => { if (j && JSON.stringify(j) !== JSON.stringify(D.quotes)) { D.quotes = j; renderLive(); if (!$('#chart').hidden) drawChart(); } }).catch(() => {});
   }, 60000);
 
@@ -501,7 +622,7 @@
     const isLive = !!last[6];
     const ph = PERIODS[K.period];
     $('#ctitle').textContent = `${s.code} ${s.name}`;
-    $('#csub').innerHTML = `${esc(last[0])}${isLive ? '（' + (D.quotes && D.quotes.market_open && marketPhase() === 'open' ? '盤中' : '收盤') + '，報價延遲約 5–10 分）' : ''} 收 <b>${fmt(last[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span>・${ph.label}K・${s.adj ? '還原價' : '未還原'}`;
+    $('#csub').innerHTML = `${esc(last[0])}${isLive ? '（' + (D.quotes && D.quotes.market_open && marketPhase() === 'open' ? '盤中' : '收盤') + (LIVE.ok ? '，即時報價' : '，報價延遲約 5–10 分') + '）' : ''} 收 <b>${fmt(last[4])}</b> <span class="${cls(chg)}">${pct(chg)}</span>・${ph.label}K・${s.adj ? '還原價' : '未還原'}`;
 
     const padL = 6, padR = 56, bottom = 16, gapP = 14;
     const pH = Math.round(H * 0.46), vH = Math.round(H * 0.11), kH = Math.round(H * 0.15), mH = H - pH - vH - kH - bottom - gapP * 3 - 8;

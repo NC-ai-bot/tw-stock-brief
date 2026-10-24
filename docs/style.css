@@ -259,3 +259,24 @@ body.vopen{overflow:hidden}
 #ccanvas{touch-action:none}
 #refresh svg{transition:transform .4s}
 #refresh.spin svg{transform:rotate(360deg)}
+
+/* 即時報價：五檔／分時 */
+.qfive{display:block;width:100%;margin:8px 0 0;padding:6px 0;border:0;border-top:1px dashed var(--line);background:none;color:var(--muted);font:inherit;font-size:.78rem;cursor:pointer;text-align:center}
+.qc.open5 .qfive{color:var(--fg)}
+.q5{padding-top:4px}
+.five{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 0 8px}
+.five .hd{font-size:.72rem;color:var(--muted);margin-bottom:3px}
+.five .col:first-child .hd{text-align:right}
+.l5{display:flex;align-items:center;gap:6px;font-size:.84rem;line-height:1.5;font-variant-numeric:tabular-nums}
+.l5.b{flex-direction:row-reverse}
+.l5 .p{min-width:52px;font-weight:600}
+.l5.b .p{color:var(--up);text-align:right}
+.l5.a .p{color:var(--down)}
+.l5 .v{position:relative;flex:1;color:var(--muted);padding:0 4px;text-align:right}
+.l5.a .v{text-align:left}
+.l5 .v::before{content:"";position:absolute;top:2px;bottom:2px;width:var(--w);opacity:.14;border-radius:3px;background:var(--up)}
+.l5.b .v::before{right:0}
+.l5.a .v::before{left:0;background:var(--down)}
+.l5 .v{z-index:0}
+canvas.tl{display:block;width:100%;height:120px}
+.tlcap{font-size:.72rem;color:var(--muted);margin-top:2px}
