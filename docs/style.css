@@ -250,7 +250,7 @@ body.vopen{overflow:hidden}
 /* ---- v5：K 線工具列 ---- */
 .ctools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .seg{display:flex;background:var(--paper);border-radius:var(--rs);padding:3px;gap:2px}
-.seg button{padding:6px 12px;border:0;border-radius:7px;background:none;color:var(--muted);font:inherit;font-size:.86rem;cursor:pointer;min-width:38px}
+.seg button{padding:6px 10px;border:0;border-radius:7px;background:none;color:var(--muted);font:inherit;font-size:.86rem;cursor:pointer;min-width:38px}
 .seg button.active{background:var(--support);color:#fff;font-weight:600}
 .seg.zoom{margin-left:auto}
 .seg.zoom button{padding:6px 9px;font-size:1rem;line-height:1}

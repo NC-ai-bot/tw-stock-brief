@@ -334,7 +334,7 @@
   }
 
   // ---------- K 線圖 ----------
-  const PERIODS = { D: { label: '日', n: 90, mas: [5, 20, 60] }, W: { label: '週', n: 80, mas: [5, 20, 60] }, M: { label: '月', n: 60, mas: [5, 20, 60] }, Y: { label: '年', n: 12, mas: [3, 5, 10] } };
+  const PERIODS = { D: { label: '日', n: 90, mas: [5, 20, 60] }, A: { label: '還原日', n: 90, mas: [5, 20, 60] }, W: { label: '週', n: 80, mas: [5, 20, 60] }, M: { label: '月', n: 60, mas: [5, 20, 60] }, Y: { label: '年', n: 12, mas: [3, 5, 10] } };
   const K = { cache: {}, cacheL: {}, code: null, period: 'D', n: 90, end: null, cur: null, geo: null, sr: true };
   function levelsFor(code) {
     const L = [];
@@ -362,14 +362,16 @@
     // 日K：優先用 k/（還原價）；週／月／年：用 kl/（未還原、2016 起），尾端接上 k/ 更新的幾天
     const p = K.period;
     if (!K.cache[code] && K.cache[code] !== false) { try { K.cache[code] = await getJSON(`data/k/${code}.json`); } catch (e) { K.cache[code] = false; } }
-    if (p !== 'D' || !K.cache[code]) {
-      if (!K.cacheL[code] && K.cacheL[code] !== false) { try { K.cacheL[code] = await getJSON(`data/kl/${code}.json`); } catch (e) { K.cacheL[code] = false; } }
-    }
+    if (!K.cacheL[code] && K.cacheL[code] !== false) { try { K.cacheL[code] = await getJSON(`data/kl/${code}.json`); } catch (e) { K.cacheL[code] = false; } }
     const k = K.cache[code], kl = K.cacheL[code];
     let base, adj, name;
-    if (p === 'D') {
+    if (p === 'A') {
+      // 還原日K：只有近期名單內的股票有（k/），每天晨報產出時更新
       if (k) { base = k.bars.slice(); adj = true; name = k.name; }
-      else if (kl) { base = kl.bars.slice(); adj = false; name = kl.name; }
+      else return { code, name: kl ? kl.name : code, noAdj: true };
+    } else if (p === 'D') {
+      if (kl) { base = kl.bars.slice(); adj = false; name = kl.name; if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b); }); } }
+      else if (k) { base = k.bars.slice(); adj = true; name = k.name; }
       else return null;
     } else {
       if (kl) { base = kl.bars.slice(); adj = false; name = kl.name; if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b); }); } }
@@ -377,7 +379,7 @@
       else return null;
     }
     const lb = liveBar(code, base); if (lb) base.push(lb);
-    return { code, name, adj, daily: base, bars: p === 'D' ? base : aggregate(base, p) };
+    return { code, name, adj, daily: base, bars: (p === 'D' || p === 'A') ? base : aggregate(base, p) };
   }
   function aggregate(daily, p) {
     const key = d => { const dt = new Date(d + 'T00:00:00'); if (p === 'Y') return d.slice(0, 4); if (p === 'M') return d.slice(0, 7); const t = new Date(dt); t.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -396,7 +398,7 @@
     $('#ctitle').textContent = code; $('#csub').textContent = '載入中…'; $('#clegend').innerHTML = '';
     const s = await series(code);
     if (K.code !== code) return;
-    if (!s) { $('#csub').textContent = '這檔沒有 K 線資料（不在晨報的股票池裡）。'; K.series = null; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); return; }
+    if (!s || s.noAdj) { $('#ctitle').textContent = s ? `${s.code} ${s.name}` : code; $('#csub').textContent = s && s.noAdj ? '這檔目前不在晨報名單內，沒有還原日K；請改看「日」（未還原）。' : '這檔沒有 K 線資料（不在晨報的股票池裡）。'; K.series = null; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); return; }
     K.series = s;
     drawChart();
   }
@@ -405,7 +407,7 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#chart').hidden) closeChart(); });
   document.addEventListener('click', async e => {
     const pb = e.target.closest('[data-period]');
-    if (pb) { K.period = pb.dataset.period; K.n = PERIODS[K.period].n; K.end = null; K.cur = null; document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('active', b === pb)); if (K.code) { K.series = await series(K.code); drawChart(); } return; }
+    if (pb) { K.period = pb.dataset.period; K.n = PERIODS[K.period].n; K.end = null; K.cur = null; document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('active', b === pb)); if (K.code) { const code = K.code; const s = await series(code); if (!s || s.noAdj) { K.series = null; $('#csub').textContent = s && s.noAdj ? '這檔目前不在晨報名單內，沒有還原日K；請改看「日」（未還原）。' : '沒有資料'; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); } else { K.series = s; drawChart(); } } return; }
     const sb = e.target.closest('[data-sr]');
     if (sb) { K.sr = !K.sr; sb.classList.toggle('active', K.sr); drawChart(); return; }
     const zb = e.target.closest('[data-zoom]');
@@ -472,7 +474,7 @@
     let lo = Infinity, hi = -Infinity;
     bars.forEach(b => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); });
     bars.forEach((b, i) => ph.mas.forEach(p => { const m = ma(closes, p, off + i); if (m != null) { lo = Math.min(lo, m); hi = Math.max(hi, m); } }));
-    if (K.period === 'D') levels.forEach(l => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
+    if (K.period === 'D' || K.period === 'A') levels.forEach(l => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
     { const pad0 = (hi - lo) * 0.06 || 1; sr = sr.filter(l => l.v >= lo - pad0 && l.v <= hi + pad0); }
     const padP = (hi - lo) * 0.06 || 1; lo -= padP; hi += padP;
     const y = v => P.top + (hi - v) / (hi - lo) * P.h;
@@ -493,7 +495,7 @@
     }
     // 時間標籤
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    const tick = (b, pb) => { if (!pb) return null; if (K.period === 'D') return b[0].slice(0, 7) !== pb[0].slice(0, 7) ? b[0].slice(5, 7).replace(/^0/, '') + '月' : null; if (K.period === 'W') return b[0].slice(0, 7) !== pb[0].slice(0, 7) && +b[0].slice(5, 7) % 3 === 1 ? (b[0].slice(5, 7) === '01' ? b[0].slice(0, 4) : b[0].slice(5, 7).replace(/^0/, '') + '月') : null; if (K.period === 'M') return b[0].slice(0, 4) !== pb[0].slice(0, 4) ? b[0].slice(0, 4) : null; return b[0].slice(0, 4); };
+    const tick = (b, pb) => { if (!pb) return null; if (K.period === 'D' || K.period === 'A') return b[0].slice(0, 7) !== pb[0].slice(0, 7) ? b[0].slice(5, 7).replace(/^0/, '') + '月' : null; if (K.period === 'W') return b[0].slice(0, 7) !== pb[0].slice(0, 7) && +b[0].slice(5, 7) % 3 === 1 ? (b[0].slice(5, 7) === '01' ? b[0].slice(0, 4) : b[0].slice(5, 7).replace(/^0/, '') + '月') : null; if (K.period === 'M') return b[0].slice(0, 4) !== pb[0].slice(0, 4) ? b[0].slice(0, 4) : null; return b[0].slice(0, 4); };
     bars.forEach((b, i) => { const t = K.period === 'Y' ? ((n <= 8 || +b[0].slice(0, 4) % 2 === 0) ? b[0].slice(0, 4) : null) : tick(b, bars[i - 1]); if (!t) return; ctx.fillStyle = C.muted; ctx.fillText(t, x(i), H - bottom + 3); if (K.period !== 'Y') { ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x(i), P.top); ctx.lineTo(x(i), M.top + M.h); ctx.stroke(); } });
     const line = (fn, color, w) => { ctx.strokeStyle = color; ctx.lineWidth = w || 1.2; ctx.beginPath(); let st = false; bars.forEach((b, i) => { const v = fn(i); if (v == null) return; if (!st) { ctx.moveTo(x(i), v); st = true; } else ctx.lineTo(x(i), v); }); ctx.stroke(); };
     [[ph.mas[0], C.ma1], [ph.mas[1], C.ma2], [ph.mas[2], C.ma3]].forEach(([p, color]) => line(i => { const m = ma(closes, p, off + i); return m == null ? null : y(m); }, color));
@@ -514,7 +516,7 @@
       ctx.fillStyle = color; ctx.textAlign = clash ? 'left' : 'right'; ctx.textBaseline = l.kind === 'R' ? 'bottom' : 'top'; ctx.font = '10px ' + FONT;
       ctx.fillText(`${l.kind === 'R' ? '壓力' : '支撐'} ${fmt(l.v)}（${l.n} 次）`, clash ? padL + 3 : W - padR - 3, ly + (l.kind === 'R' ? -1 : 1)); ctx.font = '11px ' + FONT;
     });
-    if (K.period === 'D') levels.forEach(l => {
+    if (K.period === 'D' || K.period === 'A') levels.forEach(l => {
       const color = col(l.color);
       ctx.strokeStyle = color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(padL, y(l.v)); ctx.lineTo(W - padR, y(l.v)); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px ' + FONT; ctx.fillText(`${l.label} ${fmt(l.v)}`, padL + 4, y(l.v) - 2); ctx.font = '11px ' + FONT;
@@ -537,7 +539,7 @@
     const bchg = pv ? (b[4] / pv - 1) * 100 : null;
     const m = p => { const v = ma(closes, p, gi); return v == null ? '—' : fmt(v); };
     const f1 = v => v == null ? '—' : v.toFixed(1), f2 = v => v == null ? '—' : v.toFixed(2);
-    const dl = K.period === 'D' ? b[0] : K.period === 'Y' ? b[0].slice(0, 4) + ' 年' : K.period === 'M' ? b[0].slice(0, 7) : '週 ' + b[0];
+    const dl = (K.period === 'D' || K.period === 'A') ? b[0] : K.period === 'Y' ? b[0].slice(0, 4) + ' 年' : K.period === 'M' ? b[0].slice(0, 7) : '週 ' + b[0];
     $('#clegend').innerHTML = `<span class="d">${esc(dl)}${b[6] ? '（含今日）' : ''}</span><span>開 ${fmt(b[1])}</span><span>高 ${fmt(b[2])}</span><span>低 ${fmt(b[3])}</span><span>收 <b class="${cls(bchg)}">${fmt(b[4])}</b> <span class="${cls(bchg)}">${pct(bchg)}</span></span><span>量 ${fmt(b[5], 0)} 張</span>
       <span style="color:${C.ma1}">MA${ph.mas[0]} ${m(ph.mas[0])}</span><span style="color:${C.ma2}">MA${ph.mas[1]} ${m(ph.mas[1])}</span><span style="color:${C.ma3}">MA${ph.mas[2]} ${m(ph.mas[2])}</span>
       <span style="color:${C.k}">K ${f1(ind.K[gi])}</span><span style="color:${C.d}">D ${f1(ind.D[gi])}</span><span style="color:${C.j}">J ${f1(ind.J[gi])}</span>
@@ -547,9 +549,9 @@
   }
   // 支撐壓力：近期波段高低點分群（價位相近視為同一區），依觸碰次數與新舊排序，現價上方取壓力、下方取支撐
   function srLevels(all, endI, period) {
-    const look = period === 'D' ? 160 : period === 'W' ? 120 : period === 'M' ? 60 : 0;
+    const look = (period === 'D' || period === 'A') ? 160 : period === 'W' ? 120 : period === 'M' ? 60 : 0;
     if (!look) return [];
-    const k = period === 'D' ? 3 : 2;
+    const k = (period === 'D' || period === 'A') ? 3 : 2;
     const from = Math.max(0, endI - look), seg = all.slice(from, endI), n = seg.length;
     if (n < k * 2 + 5) return [];
     const last = seg[n - 1][4];
