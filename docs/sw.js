@@ -1,6 +1,6 @@
 /* 離線快取：殼層 cache-first，資料與 PDF network-first（斷網時用上次的） */
-const VER = 'v8';
-const SHELL = ['./', 'index.html', 'style.css?v=8', 'app.js?v=8', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
+const VER = 'v9';
+const SHELL = ['./', 'index.html', 'style.css?v=9', 'app.js?v=9', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open('shell-' + VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

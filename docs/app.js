@@ -335,7 +335,7 @@
 
   // ---------- K 線圖 ----------
   const PERIODS = { D: { label: '日', n: 90, mas: [5, 20, 60] }, A: { label: '還原日', n: 90, mas: [5, 20, 60] }, W: { label: '週', n: 80, mas: [5, 20, 60] }, M: { label: '月', n: 60, mas: [5, 20, 60] }, Y: { label: '年', n: 12, mas: [3, 5, 10] } };
-  const K = { cache: {}, cacheL: {}, code: null, period: 'D', n: 90, end: null, cur: null, geo: null, sr: true };
+  const K = { cache: {}, cacheL: {}, code: null, period: 'D', n: 90, end: null, cur: null, geo: null, sr: true, river: false };
   function levelsFor(code) {
     const L = [];
     const po = D.pool_out || {}, pool = D.pool || {}, i1 = D.i1 || {};
@@ -383,8 +383,22 @@
       else return null;
     }
     const lb = liveBar(code, base); if (lb) base.push(lb);
-    return { code, name, adj, daily: base, bars: (p === 'D' || p === 'A') ? base : aggregate(base, p) };
+    const bars = (p === 'D' || p === 'A') ? base : aggregate(base, p);
+    // 本益比河流：近四季 EPS 階梯（FinMind 每日本益比反推，未還原價基準）；還原日K 時依每日還原倍率同步縮放
+    let eps = null;
+    if (code !== 'TSE01' && code !== 'OTC01') {
+      const steps = (await pers())[code];
+      if (steps && steps.length) {
+        let ratio = null;
+        if (p === 'A' && kl) { ratio = {}; const raw = {}; kl.bars.forEach(b => raw[b[0]] = b[4]); base.forEach(b => { if (raw[b[0]]) ratio[b[0]] = b[4] / raw[b[0]]; }); }
+        let j = 0; eps = bars.map(b => { while (j + 1 < steps.length && steps[j + 1][0] <= b[0]) j++; const e = steps[j][0] <= b[0] ? steps[j][1] : 0; return e > 0 ? e * (ratio ? (ratio[b[0]] || 1) : 1) : 0; });
+        if (!eps.some(v => v > 0)) eps = null;
+      }
+    }
+    return { code, name, adj, daily: base, bars, eps };
   }
+  let PERS = null;
+  async function pers() { if (PERS) return PERS; try { PERS = (await getJSON('data/per_all.json')).data || {}; } catch (e) { PERS = {}; } return PERS; }
   let DIVS = null;
   async function divs() { if (DIVS) return DIVS; try { DIVS = (await getJSON('data/divs_all.json')).data || {}; } catch (e) { DIVS = {}; } return DIVS; }
   function adjustBars(bars, events, code) {
@@ -435,6 +449,8 @@
     if (pb) { K.period = pb.dataset.period; K.n = PERIODS[K.period].n; K.end = null; K.cur = null; document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('active', b === pb)); if (K.code) { const code = K.code; const s = await series(code); if (!s || s.noAdj) { K.series = null; $('#csub').textContent = s && s.noAdj ? '這檔沒有還原日K資料。' : '沒有資料'; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); } else { K.series = s; drawChart(); } } return; }
     const sb = e.target.closest('[data-sr]');
     if (sb) { K.sr = !K.sr; sb.classList.toggle('active', K.sr); drawChart(); return; }
+    const rb = e.target.closest('[data-river]');
+    if (rb) { K.river = !K.river; rb.classList.toggle('active', K.river); drawChart(); return; }
     const zb = e.target.closest('[data-zoom]');
     if (zb) { const z = zb.dataset.zoom; if (z === 'in') K.n = Math.max(20, Math.round(K.n / 1.4)); else if (z === 'out') K.n = Math.min(600, Math.round(K.n * 1.4)); else if (z === 'left') K.end = (K.end == null ? total() : K.end) - Math.round(K.n / 2); else if (z === 'right') K.end = (K.end == null ? total() : K.end) + Math.round(K.n / 2); else if (z === 'latest') K.end = null; clampView(); drawChart(); return; }
     if (e.target.closest('a,button:not([data-k]),summary,input')) return;
@@ -500,6 +516,13 @@
     bars.forEach(b => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); });
     bars.forEach((b, i) => ph.mas.forEach(p => { const m = ma(closes, p, off + i); if (m != null) { lo = Math.min(lo, m); hi = Math.max(hi, m); } }));
     if (K.period === 'D' || K.period === 'A') levels.forEach(l => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
+    const river = K.river ? riverBands(s, endI) : null;
+    if (river) {
+      // 座標只納入離價格最近的上下河道線（最高點之上第一條、最低點之下第一條），其餘超出圖外裁掉，避免把 K 棒壓扁
+      let bl = Infinity, bh = -Infinity;
+      bars.forEach((b, i) => { const e = s.eps[off + i]; if (!(e > 0)) return; const vals = river.pes.map(p => e * p); const below = vals.filter(v => v <= b[3]), above = vals.filter(v => v >= b[2]); bl = Math.min(bl, below.length ? Math.max(...below) : vals[0]); bh = Math.max(bh, above.length ? Math.min(...above) : vals[vals.length - 1]); });
+      if (bl < Infinity) { lo = Math.min(lo, bl); hi = Math.max(hi, bh); }
+    }
     { const pad0 = (hi - lo) * 0.06 || 1; sr = sr.filter(l => l.v >= lo - pad0 && l.v <= hi + pad0); }
     const padP = (hi - lo) * 0.06 || 1; lo -= padP; hi += padP;
     const y = v => P.top + (hi - v) / (hi - lo) * P.h;
@@ -523,6 +546,25 @@
     const tick = (b, pb) => { if (!pb) return null; if (K.period === 'D' || K.period === 'A') return b[0].slice(0, 7) !== pb[0].slice(0, 7) ? b[0].slice(5, 7).replace(/^0/, '') + '月' : null; if (K.period === 'W') return b[0].slice(0, 7) !== pb[0].slice(0, 7) && +b[0].slice(5, 7) % 3 === 1 ? (b[0].slice(5, 7) === '01' ? b[0].slice(0, 4) : b[0].slice(5, 7).replace(/^0/, '') + '月') : null; if (K.period === 'M') return b[0].slice(0, 4) !== pb[0].slice(0, 4) ? b[0].slice(0, 4) : null; return b[0].slice(0, 4); };
     bars.forEach((b, i) => { const t = K.period === 'Y' ? ((n <= 8 || +b[0].slice(0, 4) % 2 === 0) ? b[0].slice(0, 4) : null) : tick(b, bars[i - 1]); if (!t) return; ctx.fillStyle = C.muted; ctx.fillText(t, x(i), H - bottom + 3); if (K.period !== 'Y') { ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x(i), P.top); ctx.lineTo(x(i), M.top + M.h); ctx.stroke(); } });
     const line = (fn, color, w) => { ctx.strokeStyle = color; ctx.lineWidth = w || 1.2; ctx.beginPath(); let st = false; bars.forEach((b, i) => { const v = fn(i); if (v == null) return; if (!st) { ctx.moveTo(x(i), v); st = true; } else ctx.lineTo(x(i), v); }); ctx.stroke(); };
+    // 本益比河流：歷史本益比分位 × 當時 EPS，由低到高填色（綠＝便宜、紅＝昂貴），畫在 K 棒底下
+    if (river) {
+      const RC = ['#1f8a4c', '#8fbf4a', '#e3b22e', '#e07b2a', '#c0392b'];
+      const xe = i => padL + (i + 1) * plotW / n, xs = i => padL + i * plotW / n;
+      ctx.save(); ctx.beginPath(); ctx.rect(padL, P.top - 2, plotW, P.h + 4); ctx.clip();
+      for (let k = 0; k < river.pes.length - 1; k++) {
+        ctx.fillStyle = RC[k]; ctx.globalAlpha = 0.13;
+        let open = false;
+        bars.forEach((b, i) => { const e = s.eps[off + i]; if (!(e > 0)) { if (open) { ctx.closePath(); ctx.fill(); open = false; } return; } const yt = y(e * river.pes[k + 1]), yb = y(e * river.pes[k]); if (!open) { ctx.beginPath(); open = true; } ctx.rect(xs(i), Math.min(yt, yb), xe(i) - xs(i) + 0.5, Math.abs(yb - yt)); });
+        if (open) { ctx.closePath(); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+      river.pes.forEach((pe, k) => {
+        ctx.strokeStyle = RC[Math.min(k, RC.length - 1)]; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+        ctx.beginPath(); let st = false; bars.forEach((b, i) => { const e = s.eps[off + i]; if (!(e > 0)) { st = false; return; } const v = y(e * pe); if (!st) { ctx.moveTo(x(i), v); st = true; } else ctx.lineTo(x(i), v); }); ctx.stroke(); ctx.globalAlpha = 1;
+        const el = s.eps[off + n - 1]; if (el > 0) { ctx.fillStyle = RC[Math.min(k, RC.length - 1)]; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.font = '10px ' + FONT; ctx.fillText(`${pe.toFixed(1)}×`, W - padR - 3, y(el * pe)); ctx.font = '11px ' + FONT; }
+      });
+      ctx.restore();
+    }
     [[ph.mas[0], C.ma1], [ph.mas[1], C.ma2], [ph.mas[2], C.ma3]].forEach(([p, color]) => line(i => { const m = ma(closes, p, off + i); return m == null ? null : y(m); }, color));
     bars.forEach((b, i) => {
       const upc = b[4] >= b[1], color = upc ? C.up : C.down;
@@ -568,7 +610,8 @@
     $('#clegend').innerHTML = `<span class="d">${esc(dl)}${b[6] ? '（含今日）' : ''}</span><span>開 ${fmt(b[1])}</span><span>高 ${fmt(b[2])}</span><span>低 ${fmt(b[3])}</span><span>收 <b class="${cls(bchg)}">${fmt(b[4])}</b> <span class="${cls(bchg)}">${pct(bchg)}</span></span><span>量 ${fmt(b[5], 0)} 張</span>
       <span style="color:${C.ma1}">MA${ph.mas[0]} ${m(ph.mas[0])}</span><span style="color:${C.ma2}">MA${ph.mas[1]} ${m(ph.mas[1])}</span><span style="color:${C.ma3}">MA${ph.mas[2]} ${m(ph.mas[2])}</span>
       <span style="color:${C.k}">K ${f1(ind.K[gi])}</span><span style="color:${C.d}">D ${f1(ind.D[gi])}</span><span style="color:${C.j}">J ${f1(ind.J[gi])}</span>
-      <span style="color:${C.dif}">DIF ${f2(gi < 26 ? null : ind.dif[gi])}</span><span style="color:${C.dea}">MACD ${f2(gi < 34 ? null : ind.dea[gi])}</span><span>OSC ${f2(gi < 34 ? null : ind.osc[gi])}</span>`;
+      <span style="color:${C.dif}">DIF ${f2(gi < 26 ? null : ind.dif[gi])}</span><span style="color:${C.dea}">MACD ${f2(gi < 34 ? null : ind.dea[gi])}</span><span>OSC ${f2(gi < 34 ? null : ind.osc[gi])}</span>` +
+      (K.river ? (river && s.eps[gi] > 0 ? `<span>本益比 <b>${(b[4] / s.eps[gi]).toFixed(1)}</b>（EPS ${s.eps[gi].toFixed(2)}，歷史分位 ${river.pes.map(v => v.toFixed(1)).join('／')}×）</span>` : `<span class="muted">${s.eps ? '此時無本益比資料（虧損或未揭露）' : '這檔沒有本益比資料（指數／ETF 或 FinMind 無資料）'}</span>`) : '');
     $('#crange').textContent = `${bars[0][0]} ～ ${bars[n - 1][0]}・${n} 根`;
     K.geo = { n, padL, padR, W, plotW };
   }
@@ -605,6 +648,16 @@
     const R = pickSide(near.filter(g => g.v > last), 'R');
     const S = pickSide(near.filter(g => g.v < last), 'S');
     return R.concat(S);
+  }
+  // 本益比河流：用這檔全部歷史（有獲利的時期）的收盤÷EPS 取 5／27.5／50／72.5／95 分位當五條河道線
+  function riverBands(s, endI) {
+    if (!s.eps) return null;
+    const pe = [];
+    for (let i = 0; i < endI; i++) { const e = s.eps[i]; if (e > 0) pe.push(s.bars[i][4] / e); }
+    if (pe.length < 60) return null;
+    pe.sort((a, b) => a - b);
+    const q = p => pe[Math.min(pe.length - 1, Math.max(0, Math.round((pe.length - 1) * p)))];
+    return { pes: [q(0.05), q(0.275), q(0.5), q(0.725), q(0.95)] };
   }
   function niceStep(r) { const p = Math.pow(10, Math.floor(Math.log10(r || 1))); const f = r / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
   // 手勢：點＝十字線；拖曳＝平移；雙指＝縮放
