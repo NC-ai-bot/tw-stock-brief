@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <header class="top">
@@ -56,9 +56,9 @@
 <section id="chart" hidden role="dialog" aria-modal="true" aria-labelledby="ctitle">
   <div class="cbar"><div><b id="ctitle">K 線</b><div id="csub" class="am"></div></div><button type="button" id="cclose">關閉</button></div>
   <div class="ctools">
-    <div class="seg"><button type="button" data-period="D" class="active">日</button><button type="button" data-period="A">還原日</button><button type="button" data-period="W">週</button><button type="button" data-period="M">月</button><button type="button" data-period="Y">年</button></div>
+    <div class="seg"><button type="button" data-period="T">分時</button><button type="button" data-period="D" class="active">日</button><button type="button" data-period="A">還原日</button><button type="button" data-period="W">週</button><button type="button" data-period="M">月</button><button type="button" data-period="Y">年</button></div>
     <div class="seg zoom"><button type="button" data-zoom="left" aria-label="往前">‹</button><button type="button" data-zoom="out" aria-label="縮小">−</button><button type="button" data-zoom="in" aria-label="放大">＋</button><button type="button" data-zoom="right" aria-label="往後">›</button><button type="button" data-zoom="latest">最新</button></div>
-    <div class="seg"><button type="button" data-sr class="active">支撐壓力</button><button type="button" data-river>本益比河流</button></div>
+    <div class="seg seg-ov"><button type="button" data-sr class="active">支撐壓力</button><button type="button" data-river>本益比河流</button></div>
   </div>
   <div class="cwrap"><canvas id="ccanvas"></canvas></div>
   <div id="crange" class="crange"></div>
@@ -74,6 +74,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
-<script src="app.js?v=11" defer></script>
+<script src="app.js?v=12" defer></script>
 </body>
 </html>

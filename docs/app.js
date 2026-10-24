@@ -462,7 +462,7 @@
   }
 
   // ---------- K 線圖 ----------
-  const PERIODS = { D: { label: '日', n: 90, mas: [5, 20, 60] }, A: { label: '還原日', n: 90, mas: [5, 20, 60] }, W: { label: '週', n: 80, mas: [5, 20, 60] }, M: { label: '月', n: 60, mas: [5, 20, 60] }, Y: { label: '年', n: 12, mas: [3, 5, 10] } };
+  const PERIODS = { T: { label: '分時', n: 90, mas: [5, 20, 60] }, D: { label: '日', n: 90, mas: [5, 20, 60] }, A: { label: '還原日', n: 90, mas: [5, 20, 60] }, W: { label: '週', n: 80, mas: [5, 20, 60] }, M: { label: '月', n: 60, mas: [5, 20, 60] }, Y: { label: '年', n: 12, mas: [3, 5, 10] } };
   const K = { cache: {}, cacheL: {}, code: null, period: 'D', n: 90, end: null, cur: null, geo: null, sr: true, river: false };
   function levelsFor(code) {
     const L = [];
@@ -501,7 +501,7 @@
         if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b.slice()); }); }
       } else if (k) { base = k.bars.slice(); adj = true; name = k.name; }
       else return { code, name: code, noAdj: true };
-    } else if (p === 'D') {
+    } else if (p === 'D' || p === 'T') {
       if (kl) { base = kl.bars.slice(); adj = false; name = kl.name; if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b); }); } }
       else if (k) { base = k.bars.slice(); adj = true; name = k.name; }
       else return null;
@@ -511,7 +511,7 @@
       else return null;
     }
     const lb = liveBar(code, base); if (lb) base.push(lb);
-    const bars = (p === 'D' || p === 'A') ? base : aggregate(base, p);
+    const bars = (p === 'D' || p === 'A' || p === 'T') ? base : aggregate(base, p);
     // 本益比河流：近四季 EPS 階梯（FinMind 每日本益比反推，未還原價基準）；還原日K 時依每日還原倍率同步縮放
     let eps = null;
     if (code !== 'TSE01' && code !== 'OTC01') {
@@ -610,6 +610,8 @@
   }
   function drawChart() {
     const s = K.series; if (!s) return;
+    $('#chart').classList.toggle('tmode', K.period === 'T');
+    if (K.period === 'T') return drawTimeline(s);
     const cv = $('#ccanvas'), wrap = cv.parentElement;
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     const W = wrap.clientWidth, H = Math.max(440, Math.min(680, Math.round(W * 1.4)));
@@ -777,6 +779,76 @@
     const S = pickSide(near.filter(g => g.v < last), 'S');
     return R.concat(S);
   }
+  // 分時走勢（K 線圖的「分時」分頁）：價格線＋每筆成交量，資料來自即時報價累積（LIVE.ticks）
+  function drawTimeline(s) {
+    const cv = $('#ccanvas'), wrap = cv.parentElement;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const W = wrap.clientWidth, H = Math.max(360, Math.min(560, Math.round(W * 1.1)));
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim(), FONT = css.getPropertyValue('--sans');
+    const C = { up: col('--up'), down: col('--down'), muted: col('--muted'), line: col('--line'), fg: col('--fg'), bg: col('--bg'), ref: '#d4a017' };
+    const code = K.code, q = D.quotes || {};
+    const item = code === 'TSE01' ? (q.index || {}).t00 : code === 'OTC01' ? (q.index || {}).o00 : (q.items || []).find(i => i.code === code);
+    const all = s.bars, last = all[all.length - 1];
+    const prev = item && item.prev ? item.prev : (last[6] && all.length > 1 ? all[all.length - 2][4] : last[4]);
+    const ticks = (LIVE.ticks[code] || []).slice();
+    const open = marketPhase() === 'open';
+    const day = item && item.date ? ymd8(item.date) : last[0];
+    $('#ctitle').textContent = `${s.code} ${s.name}`;
+    const lp = ticks.length ? ticks[ticks.length - 1][1] : (item && item.last != null ? item.last : last[4]);
+    const chg = prev ? (lp / prev - 1) * 100 : null;
+    $('#csub').innerHTML = `${esc(day)}${open ? '（盤中' + (LIVE.ok ? '，即時報價' : '') + '）' : '（收盤）'} <b>${fmt(lp)}</b> <span class="${cls(chg)}">${pct(chg)}</span>・分時・昨收 ${fmt(prev)}`;
+    const padL = 6, padR = 74, bottom = 16, gapP = 12;
+    const pH = Math.round((H - bottom - gapP - 8) * 0.72), vH = H - bottom - gapP - 8 - pH;
+    const P = { top: 8, h: pH }, V = { top: 8 + pH + gapP, h: vH };
+    const plotW = W - padL - padR;
+    const tmin = 9 * 3600, tmax = 13.5 * 3600;
+    const sec = t => { const [h, m, ss] = t.split(':').map(Number); return h * 3600 + m * 60 + (ss || 0); };
+    const xs = t => padL + (Math.min(tmax, Math.max(tmin, sec(t))) - tmin) / (tmax - tmin) * plotW;
+    let lo = prev, hi = prev; ticks.forEach(t => { lo = Math.min(lo, t[1]); hi = Math.max(hi, t[1]); });
+    if (item && item.high != null && item.low != null && item.date && ymd8(item.date) === day) { hi = Math.max(hi, item.high); lo = Math.min(lo, item.low); }
+    const span = Math.max(hi - prev, prev - lo, prev * 0.004) * 1.08; lo = prev - span; hi = prev + span;
+    const y = v => P.top + (hi - v) / (hi - lo) * P.h;
+    const dv = ticks.map((t, i) => Math.max(0, (t[2] || 0) - (i ? (ticks[i - 1][2] || 0) : 0)));
+    const vmax = Math.max(1, ...dv);
+    const vy = v => V.top + V.h - v / vmax * V.h;
+    ctx.clearRect(0, 0, W, H); ctx.font = '11px ' + FONT;
+    // 格線與時間
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    [[tmin, '9:00'], [10 * 3600, '10:00'], [11 * 3600, '11:00'], [12 * 3600, '12:00'], [13 * 3600, '13:00'], [tmax, '']].forEach(([sv, t]) => { const px = padL + (sv - tmin) / (tmax - tmin) * plotW; ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, P.top); ctx.lineTo(px, V.top + V.h); ctx.stroke(); ctx.fillStyle = C.muted; ctx.fillText(t, Math.min(W - padR - 14, Math.max(padL + 14, px)), H - bottom + 3); });
+    // 價格刻度（以昨收為中心的百分比）
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    [-1, -0.5, 0, 0.5, 1].forEach(k => { const v = prev + span * k / 1.08; ctx.strokeStyle = C.line; ctx.setLineDash(k === 0 ? [4, 3] : []); if (k === 0) ctx.strokeStyle = C.ref; ctx.beginPath(); ctx.moveTo(padL, y(v)); ctx.lineTo(W - padR, y(v)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = k === 0 ? C.ref : k > 0 ? C.up : C.down; ctx.font = '10px ' + FONT; ctx.fillText(k === 0 ? fmt(prev) : `${fmt(v)} ${(k > 0 ? '+' : '') + ((v / prev - 1) * 100).toFixed(1)}%`, W - padR + 4, y(v)); ctx.font = '11px ' + FONT; });
+    ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('成交量（張）', padL + 2, V.top - 11);
+    if (!ticks.length) {
+      ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '13px ' + FONT;
+      ctx.fillText(open ? (LIVE.ok === false ? '即時報價連線失敗，無法畫分時' : '等待即時報價…') : '分時走勢在開盤後、app 開著的期間累積（每 3 秒一筆）', padL + plotW / 2, P.top + P.h / 2);
+      if (item && item.last != null && item.time && ymd8(item.date || '') === day) { const px = xs(item.time); ctx.fillStyle = item.last >= prev ? C.up : C.down; ctx.beginPath(); ctx.arc(px, y(item.last), 3, 0, Math.PI * 2); ctx.fill(); ctx.font = '10px ' + FONT; ctx.textAlign = 'right'; ctx.fillText(`${item.time.slice(0, 5)} 收 ${fmt(item.last)}`, px - 6, y(item.last)); }
+      $('#clegend').innerHTML = `<span class="d">${esc(day)}</span><span>昨收 ${fmt(prev)}</span>${item && item.high != null ? `<span>高 ${fmt(item.high)}</span><span>低 ${fmt(item.low)}</span><span>量 ${fmt(item.vol || 0, 0)} 張</span>` : ''}`;
+      $('#crange').textContent = '09:00 ～ 13:30'; K.geo = { n: 270, padL, padR, W, plotW, T: true };
+      return;
+    }
+    const color = lp >= prev ? C.up : C.down;
+    // 成交量
+    ticks.forEach((t, i) => { const px = xs(t[0]); const up = i ? t[1] >= ticks[i - 1][1] : t[1] >= prev; ctx.fillStyle = up ? C.up : C.down; ctx.globalAlpha = 0.7; ctx.fillRect(px - 1, vy(dv[i]), 2, V.top + V.h - vy(dv[i])); ctx.globalAlpha = 1; });
+    // 價格線＋面積
+    ctx.beginPath(); ticks.forEach((t, i) => { const px = xs(t[0]), py = y(t[1]); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+    ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.lineTo(xs(ticks[ticks.length - 1][0]), y(prev)); ctx.lineTo(xs(ticks[0][0]), y(prev)); ctx.closePath(); ctx.fillStyle = color; ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1;
+    // 均價線（成交量加權）
+    let cv_ = 0, ca = 0; ctx.beginPath(); ticks.forEach((t, i) => { cv_ += dv[i]; ca += dv[i] * t[1]; const av = cv_ ? ca / cv_ : t[1]; const px = xs(t[0]), py = y(av); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }); ctx.strokeStyle = '#e39b2e'; ctx.lineWidth = 1; ctx.stroke();
+    const lx = xs(ticks[ticks.length - 1][0]); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx, y(lp), 3, 0, Math.PI * 2); ctx.fill();
+    // 十字線（K.cur＝分鐘索引）
+    let ti = ticks.length - 1;
+    if (K.cur != null) { const target = tmin + Math.max(0, Math.min(270, K.cur)) * 60; let best = 0; for (let i = 0; i < ticks.length; i++) { if (Math.abs(sec(ticks[i][0]) - target) <= Math.abs(sec(ticks[best][0]) - target)) best = i; } ti = best;
+      const px = xs(ticks[ti][0]); ctx.strokeStyle = C.muted; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, P.top); ctx.lineTo(px, V.top + V.h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(padL, y(ticks[ti][1])); ctx.lineTo(W - padR, y(ticks[ti][1])); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.fg; ctx.fillRect(W - padR + 1, y(ticks[ti][1]) - 8, padR - 2, 16); ctx.fillStyle = C.bg; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(ticks[ti][1]), W - padR + 4, y(ticks[ti][1])); }
+    const t = ticks[ti], tchg = prev ? (t[1] / prev - 1) * 100 : null;
+    $('#clegend').innerHTML = `<span class="d">${esc(day)} ${esc(t[0])}</span><span>價 <b class="${cls(tchg)}">${fmt(t[1])}</b> <span class="${cls(tchg)}">${pct(tchg)}</span></span><span>單筆量 ${fmt(dv[ti], 0)} 張</span><span>累計量 ${fmt(t[2] || 0, 0)} 張</span><span style="color:#e39b2e">均價 ${cv_ ? fmt(ca / cv_) : '—'}</span><span>昨收 ${fmt(prev)}</span>`;
+    $('#crange').textContent = `${ticks[0][0]} ～ ${ticks[ticks.length - 1][0]}・${ticks.length} 筆`;
+    K.geo = { n: 270, padL, padR, W, plotW, T: true };
+  }
   // 本益比河流：用這檔全部歷史（有獲利的時期）的收盤÷EPS 取 5／27.5／50／72.5／95 分位當五條河道線
   function riverBands(s, endI) {
     if (!s.eps) return null;
@@ -798,6 +870,7 @@
       if (!pts.has(e.pointerId)) { if (e.pointerType === 'mouse') { K.cur = idxAt(e.clientX - cv.getBoundingClientRect().left); drawChart(); } return; }
       pts.set(e.pointerId, e.clientX);
       const g = K.geo; if (!g) return;
+      if (g.T) { if (pts.size === 1) { moved = true; K.cur = idxAt(e.clientX - cv.getBoundingClientRect().left); drawChart(); } return; } // 分時：拖曳＝移動十字線
       if (pts.size === 2) { const a = [...pts.values()]; const d = Math.abs(a[0] - a[1]); if (pinch0 > 0) { K.n = Math.round(n0 * pinch0 / Math.max(d, 10)); clampView(); moved = true; drawChart(); } return; }
       const dx = e.clientX - dragStartX;
       if (Math.abs(dx) > 6) moved = true;
@@ -806,7 +879,7 @@
     const up = e => { if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId); if (!moved && pts.size === 0) { K.cur = idxAt(e.clientX - cv.getBoundingClientRect().left); drawChart(); } };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
     cv.addEventListener('mouseleave', () => { if (pts.size === 0) { K.cur = null; drawChart(); } });
-    cv.addEventListener('wheel', e => { e.preventDefault(); K.n = Math.round(K.n * (e.deltaY > 0 ? 1.15 : 0.87)); clampView(); drawChart(); }, { passive: false });
+    cv.addEventListener('wheel', e => { e.preventDefault(); if (K.geo && K.geo.T) return; K.n = Math.round(K.n * (e.deltaY > 0 ? 1.15 : 0.87)); clampView(); drawChart(); }, { passive: false });
   })();
 
   // ---------- 分頁 ----------
