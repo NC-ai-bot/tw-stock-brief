@@ -904,6 +904,7 @@
     document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.go === name));
     if (push !== false) history.replaceState(null, '', '#' + name);
     window.scrollTo({ top: 0 });
+    if (name === 'live' && typeof patchLive === 'function' && D.quotes) { patchLive(); livePoll(true); }
   }
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-go]'); if (b) { go(b.dataset.go); }
