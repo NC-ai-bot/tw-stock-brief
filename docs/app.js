@@ -282,7 +282,7 @@
   const LGROUPS = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['exit', '今日出場', 'down'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1'], ['ext', '趨勢延續觀察（測試）', 'strong']];
   function statLine(q, phase) {
     const live = q.market_open && phase === 'open';
-    if (LIVE.ok && phase === 'open') return `<span class="dot on"></span>即時・${esc(LIVE.at || '')}<small>證交所即時報價，每 ${LIVE.every / 1000} 秒更新（約 5 秒延遲）</small>`;
+    if (LIVE.ok && phase === 'open') return `<span class="dot on"></span>即時・${esc(LIVE.at || '')}<small>證交所即時，每 ${LIVE.every / 1000} 秒更新</small>`;
     const note = LIVE.ok === false ? (phase === 'open' ? '即時連線失敗，改用 5 分鐘一次的報價' : '即時連線失敗，開盤後改用 5 分鐘報價') : LIVE.ok ? '即時連線正常，開盤後每 3 秒更新' : '證交所報價，延遲約 5–10 分鐘';
     return `<span class="dot ${live ? 'on' : ''}"></span>${live ? `盤中・${esc(q.updated.slice(11))} 更新` : q.market_open ? `${esc(fmtD8(q.data_date))} 收盤` : `最近收盤 ${esc(fmtD8(q.data_date))}`}<small>${note}</small>`;
   }
