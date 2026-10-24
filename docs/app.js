@@ -209,6 +209,7 @@
     }
     const it = q.items;
     h += `<div class="lstat">${statLine(q, phase)}</div>`;
+    h += notifyCard();
     const idx = q.index || {};
     const ik = [['t00', 'TSE01'], ['o00', 'OTC01']].filter(([k]) => idx[k]);
     if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}</div>`;
@@ -230,13 +231,14 @@
   function statLine(q, phase) {
     const live = q.market_open && phase === 'open';
     if (LIVE.ok && phase === 'open') return `<span class="dot on"></span>即時・${esc(LIVE.at || '')}<small>證交所即時報價，每 ${LIVE.every / 1000} 秒更新（約 5 秒延遲）</small>`;
-    const note = LIVE.ok === false ? (phase === 'open' ? '即時連線失敗，改用 5 分鐘一次的報價' : '即時連線失敗（開盤後會改用 5 分鐘一次的報價）') : LIVE.ok ? '即時連線正常，開盤後每 3 秒更新' : '證交所報價，延遲約 5–10 分鐘';
+    const note = LIVE.ok === false ? (phase === 'open' ? '即時連線失敗，改用 5 分鐘一次的報價' : '即時連線失敗，開盤後改用 5 分鐘報價') : LIVE.ok ? '即時連線正常，開盤後每 3 秒更新' : '證交所報價，延遲約 5–10 分鐘';
     return `<span class="dot ${live ? 'on' : ''}"></span>${live ? `盤中・${esc(q.updated.slice(11))} 更新` : q.market_open ? `${esc(fmtD8(q.data_date))} 收盤` : `最近收盤 ${esc(fmtD8(q.data_date))}`}<small>${note}</small>`;
   }
   // 只換掉有變化的卡片（不整頁重畫，避免搜尋框失焦、畫面跳動）
   function patchLive() {
     const el = $('#tab-live'); const q = D.quotes; if (!q || !q.items) return;
     const st = el.querySelector('.lstat'); if (st) st.innerHTML = statLine(q, marketPhase());
+    const nc = el.querySelector('.notify'); if (nc) { const t = document.createElement('div'); t.innerHTML = notifyCard(); if (t.firstElementChild && t.firstElementChild.outerHTML !== nc.outerHTML) nc.replaceWith(t.firstElementChild); }
     const put = (code, html) => { const old = el.querySelector(`.qc[data-k="${code}"]`); if (!old) return; if (old.outerHTML === html) return; const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; old.replaceWith(nu); drawAllTL(nu); };
     const idx = q.index || {};
     if (idx.t00) put('TSE01', quoteCard(idx.t00, { index: true, code: 'TSE01' }));
@@ -304,10 +306,13 @@
   // 伺服器端每分鐘累積的整天分時（Worker Cron → KV）：打開 app 就先載回來，之後本機 3 秒一筆接著畫
   let tlServerDay = null;
   async function loadServerTicks() {
-    const day = tlKey().slice(3); if (tlServerDay === day) return;
+    const day = tlKey().slice(3);
+    if (tlServerDay !== day) LIVE.tlLoaded = new Set();
+    if (tlServerDay === day && liveCodes().every(c => LIVE.tlLoaded && LIVE.tlLoaded.has(c))) return;
     try {
-      const r = await fetch(`${LIVE.url}/tl?date=${day}`, { cache: 'no-store' }); if (!r.ok) return;
-      const j = await r.json(); tlServerDay = day;
+      const codes = liveCodes();
+      const r = await fetch(`${LIVE.url}/tl?date=${day}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (!r.ok) return;
+      const j = await r.json(); tlServerDay = day; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
       Object.keys(j).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); LIVE.ticks[code] = [...m.values()].sort((a, b) => a[0] < b[0] ? -1 : 1); });
       tlSaved = 0; saveTicks();
       if (!$('#tab-live').hidden) drawAllTL($('#tab-live'));
@@ -320,6 +325,62 @@
   setInterval(livePoll, LIVE.every);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(true); });
   setTimeout(() => livePoll(true), 1500);
+  // ---------- 推播通知（Web Push；訂閱資料存在 Worker 的 KV） ----------
+  const PUSH = { prefs: { stop: true, buy: true, close: true, morning: true }, state: 'unknown', msg: '' };
+  try { const p = JSON.parse(localStorage.getItem('push-prefs') || 'null'); if (p) Object.assign(PUSH.prefs, p); } catch (e) {}
+  const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent);
+  function pushSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+  async function swReg(ms) { const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), ms || 4000))]); return reg || (await navigator.serviceWorker.getRegistration()); }
+  async function pushSub() { try { const reg = await swReg(); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; } }
+  async function pushInit() {
+    if (!pushSupported()) { PUSH.state = isIOS() && !standalone() ? 'needinstall' : 'unsupported'; return; }
+    if (Notification.permission === 'denied') { PUSH.state = 'denied'; return; }
+    const sub = await pushSub();
+    PUSH.state = sub ? 'on' : 'off';
+    if (sub) { try { const k = 'push-synced'; const today = tlKey().slice(3); if (localStorage.getItem(k) !== today) { await pushSend('/sub', { sub: sub.toJSON(), prefs: PUSH.prefs }); localStorage.setItem(k, today); } } catch (e) {} }
+  }
+  async function pushSend(path, body) { const r = await fetch(LIVE.url + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.status); return j; }
+  function u8(b64) { const s = (b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'); const raw = atob(s); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
+  async function pushEnable() {
+    PUSH.msg = ''; 
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { PUSH.state = perm === 'denied' ? 'denied' : 'off'; PUSH.msg = '沒有取得通知權限。'; return; }
+      const reg = await swReg(8000); if (!reg) throw new Error('離線快取尚未就緒，請重新整理後再試');
+      const { publicKey } = await (await fetch(LIVE.url + '/vapid')).json();
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(publicKey) });
+      await pushSend('/sub', { sub: sub.toJSON(), prefs: PUSH.prefs });
+      try { localStorage.setItem('push-synced', tlKey().slice(3)); } catch (e) {}
+      PUSH.state = 'on'; PUSH.msg = '已開啟。按「測試」確認手機收得到。';
+    } catch (e) { PUSH.msg = '開啟失敗：' + (e.message || e); }
+  }
+  async function pushDisable() {
+    try { const sub = await pushSub(); if (sub) { await pushSend('/unsub', { endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } } catch (e) {}
+    PUSH.state = 'off'; PUSH.msg = '已關閉。';
+  }
+  async function pushTest() { try { const sub = await pushSub(); if (!sub) throw new Error('尚未開啟'); await pushSend('/test', { endpoint: sub.endpoint }); PUSH.msg = '已送出測試通知，幾秒內應該會跳出來。'; } catch (e) { PUSH.msg = '測試失敗：' + (e.message || e); } }
+  async function pushPrefs(k, v) { PUSH.prefs[k] = v; try { localStorage.setItem('push-prefs', JSON.stringify(PUSH.prefs)); } catch (e) {} const sub = await pushSub(); if (sub) pushSend('/sub', { sub: sub.toJSON(), prefs: PUSH.prefs }).catch(() => {}); }
+  function notifyCard() {
+    const st = PUSH.state;
+    const row = (k, label, desc) => `<label class="pref"><input type="checkbox" data-pref="${k}" ${PUSH.prefs[k] ? 'checked' : ''}><span><b>${label}</b><small>${desc}</small></span></label>`;
+    let body = '';
+    if (st === 'needinstall') body = `<p class="note">iPhone 要先把 app 加到主畫面（Safari 分享鈕 → 加入主畫面），再從主畫面打開才能開啟通知。</p>`;
+    else if (st === 'unsupported') body = `<p class="note">這個瀏覽器不支援推播通知。</p>`;
+    else if (st === 'denied') body = `<p class="note">通知權限被拒絕了。到手機「設定 → 通知 → 選股晨報」打開後，重新開啟 app。</p>`;
+    else if (st === 'unknown') body = `<p class="note">檢查中…</p>`;
+    else body = `<div class="prefs">${row('stop', '停損提醒', '持股跌破或接近停損（2% 內）')}${row('buy', '可買提醒', '今日新增股回到可買入上限以下／開盤超過上限')}${row('close', '收盤摘要', '13:31 加權、持股與新增股的狀態')}${row('morning', '晨報出刊', '早上晨報產出時通知')}</div>
+      <div class="btnrow">${st === 'on' ? `<button type="button" class="btn" data-push="test">測試</button><button type="button" class="btn ghost" data-push="off">關閉通知</button>` : `<button type="button" class="btn" data-push="on">開啟通知</button>`}</div>`;
+    return `<details class="notify sec plain" ${(st !== 'on' && st !== 'unknown') || PUSH.msg ? 'open' : ''}><summary><h2>盤中提醒 <span class="cnt">${st === 'on' ? '已開啟' : st === 'off' ? '未開啟' : ''}</span></h2></summary><div class="body">${body}${PUSH.msg ? `<p class="note pmsg">${esc(PUSH.msg)}</p>` : ''}<p class="note">通知由伺服器每分鐘依證交所報價判斷，不用開著 app；每檔每天同一種提醒只送一次。技術面提醒，不是買賣指令。</p></div></details>`;
+  }
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-push]'); if (!b) return;
+    e.preventDefault(); b.disabled = true;
+    if (b.dataset.push === 'on') await pushEnable(); else if (b.dataset.push === 'off') await pushDisable(); else await pushTest();
+    patchLive();
+  });
+  document.addEventListener('change', e => { const c = e.target.closest('[data-pref]'); if (c) pushPrefs(c.dataset.pref, c.checked); });
+  pushInit().then(() => { if (!$('#tab-live').hidden && D.quotes) patchLive(); });
   function ctxFor(x, kind) {
       const last = x.last; let ctx = '', flag = '';
       if (kind === 'new' || kind === 'i1new') {
@@ -584,6 +645,7 @@
     if (!s || s.noAdj) { $('#ctitle').textContent = s ? `${s.code} ${s.name}` : code; $('#csub').textContent = s && s.noAdj ? '這檔沒有還原日K資料。' : '這檔沒有 K 線資料（不在晨報的股票池裡）。'; K.series = null; $('#clegend').innerHTML = ''; $('#crange').textContent = ''; const cv = $('#ccanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); return; }
     K.series = s;
     drawChart();
+    if (LIVE.tlLoaded && !LIVE.tlLoaded.has(code)) loadServerTicks();
   }
   function closeChart() { $('#chart').hidden = true; document.body.classList.remove('vopen'); K.code = null; K.series = null; }
   $('#cclose').addEventListener('click', closeChart);

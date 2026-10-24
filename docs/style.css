@@ -283,3 +283,19 @@ canvas.tl{display:block;width:100%;height:120px}
 
 /* 分時模式：隱藏縮放與支撐壓力／河流按鈕 */
 #chart.tmode .seg.zoom,#chart.tmode .seg-ov{display:none}
+
+/* 推播設定 */
+.notify summary{list-style:none;cursor:pointer}
+.notify summary::-webkit-details-marker{display:none}
+.notify summary::marker{content:""}
+.notify summary{align-items:center}
+.notify summary::before{order:2;margin-left:auto}
+.notify summary h2{flex:1}
+.notify summary h2{margin:0}
+.prefs{display:grid;gap:6px;margin-bottom:10px}
+.pref{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:var(--rs);background:var(--bg)}
+.pref input{margin-top:3px;width:18px;height:18px;accent-color:var(--support)}
+.pref span{display:flex;flex-direction:column;gap:2px;font-size:.9rem}
+.pref small{color:var(--muted);font-size:.78rem}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--fg)}
+.pmsg{color:var(--fg)}
