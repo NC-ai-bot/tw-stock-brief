@@ -160,7 +160,7 @@
     if (Date.now() - FUT.at < every) return; FUT.at = Date.now();
     try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); FUT.data = await r.json(); FUT.ok = true; }
     catch (e) { FUT.ok = false; }
-    if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) old.replaceWith(t.firstElementChild); } }
+    if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); const grid = document.querySelector('#tab-live .qgrid.idx'); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) old.replaceWith(t.firstElementChild); } else if (!old && html && grid) grid.insertAdjacentHTML('beforeend', html); }
   }
   function futCard() {
     const d = FUT.data; if (!d) return '';
