@@ -107,5 +107,9 @@ app 只讀 `docs/data/*.json`，選股邏輯一律在排程裡算好；`docs/rep
 | `data/archive.json` | archive.json | 歷史晨報清單 |
 | `data/i1.json` | i1.json | I1 測試名單 |
 | `data/ext.json` | ext.json | 趨勢延續觀察 |
+| `data/quotes.json` | tools/quotes.py（GitHub Actions 每 5 分鐘） | 盤中報價：加權、櫃買與名單內各檔 |
+| `data/k/CODE.json` | tools/export_k.py（排程，adj.py apply 之後） | 入選股票最近 180 根還原日K |
+| `data/kl/CODE.json` | tools/export_kl.py（FinMind；排程每天補名單、週五補全部） | 股票池 199 檔＋兩指數 2016 起未還原日K，供週／月／年K |
+| `guide.pdf` | 手動（_guide/guide.html → Chromium 列印） | 使用說明 |
 
 自動更新：21:51 夜間排程推晚上版、07:29 晨報排程推正式版（含當天 archive PDF 與清理 60 份以外的舊檔）、08:40 備援排程在觸發備援時再推一次；三個排程都以 add_repo（push）＋ git clone/commit/push 寫入 docs/。
