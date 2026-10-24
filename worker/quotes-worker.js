@@ -3,6 +3,7 @@
  * 端點（只接受來自晨報 app https://nc-ai-bot.github.io 的請求）：
  *   GET  /q?codes=2330,6669,TSE01,OTC01&otc=3293  證交所即時報價（含五檔），同一組代號 3 秒內共用快取
  *   GET  /tl?date=YYYYMMDD&codes=2330,TSE01       當天每分鐘累積的分時 {code:[[time,last,vol],...]}（不帶 codes＝全部）
+ *   GET  /fut                                      台指期近月（期交所：日盤 day／夜盤 night，含現貨），5 秒快取
  *   GET  /vapid                                    推播公鑰
  *   POST /sub   {sub, prefs}                       訂閱推播（prefs: {stop,buy,close,morning} 布林）
  *   POST /unsub {endpoint}                         取消
@@ -77,6 +78,18 @@ async function universeCodes() {
   const u = await appJSON('universe.json', 3600, {});
   const codes = ['TSE01', 'OTC01', ...Object.keys(u)];
   return { codes, otc: new Set(codes.filter(c => u[c] && u[c].ex === 'otc')), uni: u };
+}
+
+// ---------- 台指期（期交所行情資訊網） ----------
+const TAIFEX = 'https://mis.taifex.com.tw/futures/api/getQuoteList';
+async function taifex(marketType) {
+  const r = await fetch(TAIFEX, { method: 'POST', headers: { 'content-type': 'application/json', 'accept': 'application/json', 'user-agent': 'Mozilla/5.0', 'referer': 'https://mis.taifex.com.tw/futures/' }, body: JSON.stringify({ MarketType: marketType, SymbolType: 'F', KindID: '1', CID: 'TXF', ExpireMonth: '', RowSize: '全部', PageNo: '', SortColumn: '', AscDesc: 'A' }), cf: { cacheTtl: 0 } });
+  if (!r.ok) throw new Error('TAIFEX ' + r.status);
+  const j = await r.json(); const L = (j.RtData && j.RtData.QuoteList) || [];
+  const n = v => { const x = parseFloat(String(v).replace(/,/g, '')); return isNaN(x) ? null : x; };
+  const conv = x => ({ sym: x.SymbolID, name: x.DispCName, last: n(x.CLastPrice), ref: n(x.CRefPrice), chg: n(x.CDiff), pct: n(x.CDiffRate), open: n(x.COpenPrice), high: n(x.CHighPrice), low: n(x.CLowPrice), vol: n(x.CTotalVolume), oi: n(x.OpenInterest), bid: n(x.CBidPrice1), ask: n(x.CAskPrice1), bidv: n(x.CBidSize1), askv: n(x.CAskSize1), date: x.CDate, time: x.CTime ? `${x.CTime.slice(0, 2)}:${x.CTime.slice(2, 4)}:${x.CTime.slice(4, 6)}` : null, status: x.Status });
+  const spot = L.find(x => /^TXF-[SP]$/.test(x.SymbolID)), near = L.find(x => /^TXF[A-Z]\d-[FM]$/.test(x.SymbolID));
+  return { spot: spot ? conv(spot) : null, near: near ? conv(near) : null };
 }
 
 // ---------- Web Push（RFC 8291 aes128gcm ＋ RFC 8292 VAPID；加解密已用 http_ece 驗證） ----------
@@ -210,6 +223,15 @@ export default {
       const want = (u.searchParams.get('codes') || '').split(',').map(s => s.trim()).filter(Boolean);
       const out = want.length ? Object.fromEntries(want.filter(c => raw[c]).map(c => [c, raw[c]])) : raw;
       return json(out, 200, { 'cache-control': 'public, max-age=20' });
+    }
+    if (u.pathname === '/fut') {
+      const key = new Request('https://cache.local/fut'); const cache = caches.default;
+      const hit = await cache.match(key); if (hit) { const h = new Headers(hit.headers); Object.entries(CORS).forEach(([k, v]) => h.set(k, v)); return new Response(hit.body, { headers: h }); }
+      try {
+        const [day, night] = await Promise.all([taifex('0'), taifex('1')]);
+        const res = json({ ts: Date.now(), day, night }, 200, { 'cache-control': 'public, max-age=5' });
+        await cache.put(key, res.clone()); return res;
+      } catch (e) { return json({ error: String(e) }, 502); }
     }
     if (u.pathname === '/vapid') return json({ publicKey: (await ensureVapid(env.TL)).publicKey });
     if (req.method !== 'POST') return json({ error: 'method' }, 405);

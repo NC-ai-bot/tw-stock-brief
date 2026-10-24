@@ -135,6 +135,53 @@
     return 'after';
   }
   const OPEN5 = new Set(); // 展開「五檔／分時」的卡片
+  // ---------- 台北時鐘與開收盤倒數 ----------
+  const HOLIDAYS = ['2026-10-26', '2027-01-01']; // 已知休市（補假／元旦）；其餘以週一到五計
+  const pad2 = n => String(n).padStart(2, '0');
+  function isTradingDay(d) { const wd = d.getDay(); if (wd === 0 || wd === 6) return false; const k = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; return !HOLIDAYS.includes(k); }
+  function nextOpen(t) { const d = new Date(t); d.setHours(9, 0, 0, 0); if (d <= t || !isTradingDay(d)) { do { d.setDate(d.getDate() + 1); } while (!isTradingDay(d)); } return d; }
+  function dur(ms) { const s = Math.max(0, Math.floor(ms / 1000)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return (d ? d + ' 天 ' : '') + `${pad2(h)}:${pad2(m)}:${pad2(ss)}`; }
+  function tickClock() {
+    const t = tpeNow(); const clk = $('#clk'), cd = $('#cd'); if (!clk) return;
+    clk.textContent = `${pad2(t.getHours())}:${pad2(t.getMinutes())}:${pad2(t.getSeconds())}`;
+    const hm = t.getHours() * 60 + t.getMinutes();
+    if (isTradingDay(t) && hm >= 9 * 60 && hm < 13 * 60 + 30) { const close = new Date(t); close.setHours(13, 30, 0, 0); cd.textContent = '距收盤 ' + dur(close - t); cd.className = 'on'; }
+    else { const o = nextOpen(t); const same = o.toDateString() === t.toDateString(); cd.textContent = (same ? '距開盤 ' : (isTradingDay(t) && hm >= 13 * 60 + 30 ? '已收盤・距開盤 ' : '休市・距開盤 ')) + dur(o - t); cd.className = ''; }
+  }
+  tickClock(); setInterval(tickClock, 1000);
+
+  // ---------- 台指期（近月；日盤 08:45–13:45、夜盤 15:00–05:00） ----------
+  const FUT = { data: null, at: 0, ok: null };
+  function futSession() { const t = tpeNow(), hm = t.getHours() * 60 + t.getMinutes(), wd = t.getDay(); const wk = wd >= 1 && wd <= 5; if (wk && hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) return 'day'; if ((wk && hm >= 15 * 60) || (hm < 5 * 60 && wd >= 2 && wd <= 6)) return 'night'; return null; }
+  function futShow() { const s = futSession(); if (s) return s; const hm = tpeNow().getHours() * 60 + tpeNow().getMinutes(); return hm > 13 * 60 + 45 && hm < 15 * 60 ? 'day' : 'night'; }
+  async function futPoll() {
+    if (document.visibilityState !== 'visible') return;
+    const s = futSession(); const every = s === 'day' ? 3000 : s === 'night' ? 10000 : 60000;
+    if (Date.now() - FUT.at < every) return; FUT.at = Date.now();
+    try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); FUT.data = await r.json(); FUT.ok = true; }
+    catch (e) { FUT.ok = false; }
+    if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) old.replaceWith(t.firstElementChild); } }
+  }
+  function futCard() {
+    const d = FUT.data; if (!d) return '';
+    const which = futShow(); const sess = d[which] || d.day || {}; const f = sess.near; if (!f || f.last == null) return '';
+    const live = futSession() === which;
+    const spot = (d.day && d.day.spot && d.day.spot.last) || null;
+    const basis = spot != null ? f.last - spot : null;
+    const c = cls(f.chg);
+    const mon = (f.sym || '').match(/^TXF([A-L])(\d)/); const monName = mon ? `${'ABCDEFGHIJKL'.indexOf(mon[1]) + 1} 月` : '近月';
+    return `<div class="qc ${c} qc-idx qc-fut" data-k="FUT">
+      <div class="qh"><span class="qn">台指期 ${esc(monName)}</span><span class="tagx ${live ? 'on' : ''}">${which === 'day' ? '日盤' : '夜盤'}${live ? '' : '・收盤'}</span><span class="qt">${f.time ? esc(f.time) : ''}</span></div>
+      <div class="qp"><b>${fmt(f.last, 0)}</b><span class="qd"><em>${sgn(f.chg, 0)}</em><em>${pct(f.pct)}</em></span></div>
+      <div class="qg">
+        <span><small>開</small>${fmt(f.open, 0)}</span><span><small>高</small>${fmt(f.high, 0)}</span><span><small>低</small>${fmt(f.low, 0)}</span><span><small>${which === 'day' ? '昨結' : '參考'}</small>${fmt(f.ref, 0)}</span>
+        <span><small>買</small>${fmt(f.bid, 0)}</span><span><small>賣</small>${fmt(f.ask, 0)}</span><span><small>量</small>${fmt(f.vol, 0)}</span><span><small>價差</small>${basis == null ? '—' : `<i class="${cls(basis)}">${(basis > 0 ? '+' : '') + fmt(basis, 0)}</i>`}</span>
+      </div>
+      <div class="qx">${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
+    </div>`;
+  }
+  setInterval(futPoll, 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { FUT.at = 0; futPoll(); } });
   function quoteCard(x, opts) {
     const o = opts || {};
     const last = x.last, chg = x.chg != null ? x.chg : (last != null && x.prev ? last - x.prev : null);
@@ -212,7 +259,7 @@
     h += notifyCard();
     const idx = q.index || {};
     const ik = [['t00', 'TSE01'], ['o00', 'OTC01']].filter(([k]) => idx[k]);
-    if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}</div>`;
+    if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}${futCard()}</div>`;
     const groups = LGROUPS;
     let any = false;
     groups.forEach(([k, title, c]) => {
@@ -243,6 +290,7 @@
     const idx = q.index || {};
     if (idx.t00) put('TSE01', quoteCard(idx.t00, { index: true, code: 'TSE01' }));
     if (idx.o00) put('OTC01', quoteCard(idx.o00, { index: true, code: 'OTC01' }));
+    { const fh = futCard(); const grid = el.querySelector('.qgrid.idx'); if (fh && grid && !grid.querySelector('.qc-fut')) grid.insertAdjacentHTML('beforeend', fh); }
     q.items.forEach(x => { const k = LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen'))); if (!k) return; const { ctx, flag } = ctxFor(x, k); put(x.code, quoteCard(x, { ctx, flag })); });
   }
   // 五檔／分時展開
@@ -325,6 +373,7 @@
   setInterval(livePoll, LIVE.every);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(true); });
   setTimeout(() => livePoll(true), 1500);
+  setTimeout(() => { FUT.at = 0; futPoll(); }, 1200);
   // ---------- 推播通知（Web Push；訂閱資料存在 Worker 的 KV） ----------
   const PUSH = { prefs: { stop: true, buy: true, close: true, morning: true }, state: 'unknown', msg: '' };
   try { const p = JSON.parse(localStorage.getItem('push-prefs') || 'null'); if (p) Object.assign(PUSH.prefs, p); } catch (e) {}
@@ -660,7 +709,7 @@
     const zb = e.target.closest('[data-zoom]');
     if (zb) { const z = zb.dataset.zoom; if (z === 'in') K.n = Math.max(20, Math.round(K.n / 1.4)); else if (z === 'out') K.n = Math.min(600, Math.round(K.n * 1.4)); else if (z === 'left') K.end = (K.end == null ? total() : K.end) - Math.round(K.n / 2); else if (z === 'right') K.end = (K.end == null ? total() : K.end) + Math.round(K.n / 2); else if (z === 'latest') K.end = null; clampView(); drawChart(); return; }
     if (e.target.closest('a,button:not([data-k]),summary,input')) return;
-    const k = e.target.closest('[data-k]'); if (k) openChart(k.dataset.k);
+    const k = e.target.closest('[data-k]'); if (k && k.dataset.k !== 'FUT') openChart(k.dataset.k);
   });
   window.addEventListener('resize', () => { if (!$('#chart').hidden) drawChart(); });
   function total() { return K.series ? K.series.bars.length : 0; }
