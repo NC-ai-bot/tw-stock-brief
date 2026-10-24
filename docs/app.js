@@ -57,8 +57,13 @@
     } else box.hidden = true;
     const stale = $('#stale');
     const eve = (m.notes || []).find(n => /晚上版/.test(n));
-    if (eve) { stale.hidden = false; stale.textContent = eve + '。'; }
-    else stale.hidden = true;
+    if (eve) {
+      // 低調顯示：小字一行＋可關閉，關閉後同一則不再出現
+      let dismissed = false; try { dismissed = localStorage.getItem('stale-dismissed') === eve; } catch (e) {}
+      if (dismissed) stale.hidden = true;
+      else { stale.hidden = false; stale.innerHTML = `<span>${esc(eve.replace(/^這是前一晚 /, '晚上版（').replace(/ 產出的晚上版，/, '產出），').replace(/。?$/, ''))}</span><button type="button" class="x" aria-label="關閉" data-dismiss-stale>×</button>`; }
+      stale.onclick = e => { if (e.target.closest('[data-dismiss-stale]')) { stale.hidden = true; try { localStorage.setItem('stale-dismissed', eve); } catch (err) {} } };
+    } else stale.hidden = true;
   }
 
   // ---------- 今日 ----------
