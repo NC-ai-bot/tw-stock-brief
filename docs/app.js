@@ -14,7 +14,7 @@
   const WEB = 'https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ';
 
   const D = {};
-  const FILES = ['meta', 'market', 'market_analysis', 'pool_out', 'pool', 'history', 'archive', 'i1', 'ext', 'quotes'];
+  const FILES = ['meta', 'market', 'market_analysis', 'pool_out', 'pool', 'history', 'archive', 'i1', 'ext', 'quotes', 'changelog'];
 
   async function load(force) {
     const res = await Promise.all(FILES.map(async f => {
@@ -25,7 +25,7 @@
       } catch (e) { return [f, null]; }
     }));
     res.forEach(([f, v]) => { D[f] = v; });
-    render();
+    render(); clBadge();
   }
 
   function render() {
@@ -67,6 +67,23 @@
   }
 
   // ---------- 今日 ----------
+  // ---------- 更新紀錄（data/changelog.json；看過的版本記在手機） ----------
+  function clSeen() { try { return localStorage.getItem('cl-seen') || ''; } catch (e) { return ''; } }
+  function clLatest() { const c = D.changelog; return c && c.entries && c.entries.length ? c.entries[0].ver : ''; }
+  function clBadge() { const b = $('#clnew'); if (!b) return; const latest = clLatest(); b.hidden = !latest || clSeen() === latest; }
+  function changelogSection() {
+    const c = D.changelog; if (!c || !c.entries || !c.entries.length) return '';
+    const latest = c.entries[0]; const unseen = clSeen() !== latest.ver;
+    const entry = (e, open) => `<details class="clv" ${open ? 'open' : ''}><summary><b>v${esc(e.ver)}</b><span>${esc(e.title)}</span><small>${esc(e.date.slice(5).replace('-', '/'))}</small></summary><ul class="lead">${e.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+    return `<section class="sec plain changelog" id="changelog"><h2>更新紀錄<span class="cnt">v${esc(latest.ver)}${unseen ? '<i class="newdot"></i>' : ''}</span></h2><div class="body">
+      ${entry(latest, true)}
+      ${c.entries.length > 1 ? `<details class="clmore"><summary>更早的版本<span class="am">${c.entries.length - 1} 筆</span></summary>${c.entries.slice(1).map(e => entry(e, false)).join('')}</details>` : ''}
+      <p class="note">app 會持續加功能；有新版本時左上角會出現綠點。</p></div></section>`;
+  }
+  document.addEventListener('click', e => {
+    if (e.target.closest('#clnew')) { go('today'); const el = $('#changelog'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (e.target.closest('#changelog')) { try { localStorage.setItem('cl-seen', clLatest()); } catch (err) {} clBadge(); const dot = document.querySelector('#changelog .newdot'); if (dot) dot.remove(); }
+  });
   function renderToday() {
     const el = $('#tab-today');
     const po = D.pool_out, ma = D.market_analysis || {};
@@ -111,6 +128,7 @@
       <a class="btn" href="guide.pdf" data-pdf="晨報 App 使用說明">使用說明</a>
       <a class="btn" href="${WEB}" target="_blank" rel="noopener">晨報網頁版</a></div>
       ${(D.meta && D.meta.notes || []).length ? `<details style="margin-top:8px"><summary>備註<span class="am">${D.meta.notes.length} 則</span></summary><ul class="lead note">${D.meta.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>` : ''}</div></section>`;
+    h += changelogSection();
     el.innerHTML = h;
   }
 
@@ -166,9 +184,10 @@
     if (document.visibilityState !== 'visible') return;
     const s = futSession(); const every = s === 'day' ? 3000 : s === 'night' ? 10000 : 60000;
     if (Date.now() - FUT.at < every) return; FUT.at = Date.now();
-    try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); FUT.data = await r.json(); FUT.ok = true; }
+    try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); FUT.data = await r.json(); FUT.ok = true;
+      if (s) { const f = FUT.data[s] && FUT.data[s].near; if (f && f.last != null && f.time) { const k = s === 'day' ? 'FUT' : 'FUTN'; const arr = LIVE.ticks[k] = LIVE.ticks[k] || []; if (!arr.length || arr[arr.length - 1][0] !== f.time) { arr.push([f.time, f.last, f.vol]); if (arr.length > 3000) arr.shift(); saveTicks(); } } } }
     catch (e) { FUT.ok = false; }
-    if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); const grid = document.querySelector('#tab-live .qgrid.idx'); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) old.replaceWith(t.firstElementChild); } else if (!old && html && grid) grid.insertAdjacentHTML('beforeend', html); }
+    if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); const grid = document.querySelector('#tab-live .qgrid.idx'); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) { old.replaceWith(t.firstElementChild); drawAllTL(t.firstElementChild); } } else if (!old && html && grid) { grid.insertAdjacentHTML('beforeend', html); drawAllTL(grid); } }
   }
   function futCard() {
     const d = FUT.data; if (!d) return '';
@@ -186,6 +205,8 @@
         <span><small>買</small>${fmt(f.bid, 0)}</span><span><small>賣</small>${fmt(f.ask, 0)}</span><span><small>量</small>${fmt(f.vol, 0)}</span><span><small>價差</small>${basis == null ? '—' : `<i class="${cls(basis)}">${(basis > 0 ? '+' : '') + fmt(basis, 0)}</i>`}</span>
       </div>
       <div class="qx">${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
+      <button type="button" class="qfive" data-five="FUT" aria-expanded="${OPEN5.has('FUT')}">${OPEN5.has('FUT') ? '收合' : '分時走勢'}</button>
+      ${OPEN5.has('FUT') ? `<div class="q5"><canvas class="tl" data-tl="${which === 'day' ? 'FUT' : 'FUTN'}" height="120"></canvas><div class="tlcap">${which === 'day' ? '日盤 08:45–13:45' : '夜盤 15:00–05:00'} 分時${(LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'] || []).length > 1 ? `（${LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'].length} 筆）` : '：伺服器每 1–2 分鐘自動累積'}</div></div>` : ''}
     </div>`;
   }
   setInterval(futPoll, 1000);
@@ -222,25 +243,33 @@
     }
     return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `分時走勢（${LIVE.ticks[code].length} 筆）` : '分時走勢：開盤後每分鐘自動累積，開著 app 時每 3 秒一筆'}</div></div>`;
   }
-  // 分時走勢：x 軸 09:00–13:30，y 軸以昨收為基準
+  // 分時時間軸：股票 09:00–13:30；台指期日盤 08:45–13:45；夜盤 15:00–05:00（跨日，凌晨時間加 24 小時）
+  const SESS = {
+    stock: { tmin: 9 * 3600, tmax: 13.5 * 3600, grid: [9, 10, 11, 12, 13, 13.5].map(h => h * 3600), labels: [[9 * 3600, '9'], [10 * 3600, '10'], [11 * 3600, '11'], [12 * 3600, '12'], [13 * 3600, '13'], [13.5 * 3600, '13:30']] },
+    futday: { tmin: 8.75 * 3600, tmax: 13.75 * 3600, grid: [8.75, 9, 10, 11, 12, 13, 13.75].map(h => h * 3600), labels: [[8.75 * 3600, '8:45'], [10 * 3600, '10'], [11 * 3600, '11'], [12 * 3600, '12'], [13 * 3600, '13'], [13.75 * 3600, '13:45']] },
+    futnight: { tmin: 15 * 3600, tmax: 29 * 3600, wrap: true, grid: [15, 17, 19, 21, 23, 25, 27, 29].map(h => h * 3600), labels: [[15 * 3600, '15'], [17 * 3600, '17'], [19 * 3600, '19'], [21 * 3600, '21'], [23 * 3600, '23'], [25 * 3600, '1'], [27 * 3600, '3'], [29 * 3600, '5']] },
+  };
+  // 分時走勢：y 軸以昨收為基準
   function drawTL(cv) {
     const code = cv.dataset.tl; const wrap = cv.parentElement; const W = wrap.clientWidth - 2, H = 120;
     const dpr = Math.min(window.devicePixelRatio || 1, 3); cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px';
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim();
-    const item = code === 'TSE01' ? (D.quotes.index || {}).t00 : code === 'OTC01' ? (D.quotes.index || {}).o00 : (D.quotes.items || []).find(i => i.code === code);
+    const isFut = code === 'FUT' || code === 'FUTN';
+    const item = isFut ? (FUT.data && FUT.data[code === 'FUT' ? 'day' : 'night'] && FUT.data[code === 'FUT' ? 'day' : 'night'].near) : code === 'TSE01' ? (D.quotes.index || {}).t00 : code === 'OTC01' ? (D.quotes.index || {}).o00 : (D.quotes.items || []).find(i => i.code === code);
     const ticks = (LIVE.ticks[code] || []).slice();
     if (!ticks.length && item && item.last != null && item.time) ticks.push([item.time, item.last]);
-    const prev = item && item.prev; if (!prev) return;
+    const prev = item && (isFut ? item.ref : item.prev); if (!prev) return;
     const padL = 4, padR = 44, padT = 8, padB = 16, pw = W - padL - padR, ph = H - padT - padB;
-    const tmin = 9 * 3600, tmax = 13.5 * 3600;
-    const sec = t => { const [h, m, s] = t.split(':').map(Number); return h * 3600 + m * 60 + (s || 0); };
+    const S = SESS[code === 'FUT' ? 'futday' : code === 'FUTN' ? 'futnight' : 'stock'];
+    const tmin = S.tmin, tmax = S.tmax;
+    const sec = t => { const [h, m, s] = t.split(':').map(Number); let v = h * 3600 + m * 60 + (s || 0); if (S.wrap && v < 12 * 3600) v += 86400; return v; };
     let lo = prev, hi = prev; ticks.forEach(t => { lo = Math.min(lo, t[1]); hi = Math.max(hi, t[1]); });
     const span = Math.max(hi - prev, prev - lo, prev * 0.005); lo = prev - span * 1.05; hi = prev + span * 1.05;
     const x = t => padL + (Math.min(tmax, Math.max(tmin, sec(t))) - tmin) / (tmax - tmin) * pw, y = v => padT + (hi - v) / (hi - lo) * ph;
     ctx.clearRect(0, 0, W, H); ctx.font = '10px ' + css.getPropertyValue('--sans'); ctx.textBaseline = 'middle';
-    ctx.strokeStyle = col('--line'); ctx.lineWidth = 1; [tmin, 10 * 3600, 11 * 3600, 12 * 3600, 13 * 3600, tmax].forEach(s => { const px = padL + (s - tmin) / (tmax - tmin) * pw; ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT + ph); ctx.stroke(); });
-    ctx.fillStyle = col('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ['9', '10', '11', '12', '13'].forEach((t, i) => ctx.fillText(t, padL + (i * 3600) / (tmax - tmin) * pw, padT + ph + 3)); ctx.fillText('13:30', padL + pw, padT + ph + 3);
+    ctx.strokeStyle = col('--line'); ctx.lineWidth = 1; S.grid.forEach(s => { const px = padL + (s - tmin) / (tmax - tmin) * pw; ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT + ph); ctx.stroke(); });
+    ctx.fillStyle = col('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; S.labels.forEach(([sv, t]) => ctx.fillText(t, Math.min(padL + pw - 10, Math.max(padL + 10, padL + (sv - tmin) / (tmax - tmin) * pw)), padT + ph + 3));
     ctx.setLineDash([3, 3]); ctx.strokeStyle = '#d4a017'; ctx.beginPath(); ctx.moveTo(padL, y(prev)); ctx.lineTo(padL + pw, y(prev)); ctx.stroke(); ctx.setLineDash([]);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d4a017'; ctx.fillText(fmtP(prev), padL + pw + 3, y(prev));
     ctx.fillStyle = col('--up'); ctx.fillText('+' + (span / prev * 100).toFixed(1) + '%', padL + pw + 3, padT + 4); ctx.fillStyle = col('--down'); ctx.fillText('-' + (span / prev * 100).toFixed(1) + '%', padL + pw + 3, padT + ph - 4);
@@ -298,7 +327,7 @@
     const idx = q.index || {};
     if (idx.t00) put('TSE01', quoteCard(idx.t00, { index: true, code: 'TSE01' }));
     if (idx.o00) put('OTC01', quoteCard(idx.o00, { index: true, code: 'OTC01' }));
-    { const fh = futCard(); const grid = el.querySelector('.qgrid.idx'); if (fh && grid && !grid.querySelector('.qc-fut')) grid.insertAdjacentHTML('beforeend', fh); }
+    { const fh = futCard(); const grid = el.querySelector('.qgrid.idx'); if (fh && grid && !grid.querySelector('.qc-fut')) { grid.insertAdjacentHTML('beforeend', fh); drawAllTL(grid); } }
     q.items.forEach(x => { const k = LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen'))); if (!k) return; const { ctx, flag } = ctxFor(x, k); put(x.code, quoteCard(x, { ctx, flag })); });
   }
   // 五檔／分時展開
@@ -306,6 +335,7 @@
     const b = e.target.closest('[data-five]'); if (!b) return;
     e.stopPropagation(); const code = b.dataset.five;
     if (OPEN5.has(code)) OPEN5.delete(code); else OPEN5.add(code);
+    if (code === 'FUT') { const old = b.closest('.qc'); const html = futCard(); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; old.replaceWith(t.firstElementChild); drawAllTL(t.firstElementChild); } return; }
     const q = D.quotes || {}; const x = code === 'TSE01' ? (q.index || {}).t00 : code === 'OTC01' ? (q.index || {}).o00 : (q.items || []).find(i => i.code === code);
     if (!x) return;
     const card = b.closest('.qc'); const kind = code === 'TSE01' || code === 'OTC01' ? null : LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen')));
@@ -366,7 +396,7 @@
     if (tlServerDay !== day) LIVE.tlLoaded = new Set();
     if (tlServerDay === day && liveCodes().every(c => LIVE.tlLoaded && LIVE.tlLoaded.has(c))) return;
     try {
-      const codes = liveCodes();
+      const codes = liveCodes().concat(['FUT', 'FUTN']);
       const r = await fetch(`${LIVE.url}/tl?date=${day}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (!r.ok) return;
       const j = await r.json(); tlServerDay = day; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
       Object.keys(j).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); LIVE.ticks[code] = [...m.values()].sort((a, b) => a[0] < b[0] ? -1 : 1); });

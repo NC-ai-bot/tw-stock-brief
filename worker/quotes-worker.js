@@ -11,7 +11,8 @@
  *   GET  /                                         狀態（不限來源）
  * Cron：
  *   "* 1-5 * * 1-5"  台北 09:00–13:59 每分鐘：抓全股票池＋指數 → 分時進 KV；依名單判斷警示（跌破／接近出場線、可買、開盤超過上限）→ 推播；13:31 後送一次收盤摘要
- *   "35 23 * * 0-4"、"50 23 * * 0-4"、"15 0 * * 1-5"  台北 07:35／07:50／08:15：晨報出刊就推播一次
+ *   "35 23 * * SUN-THU"、"50 23 * * SUN-THU"、"15 0 * * MON-FRI"  台北 07:35／07:50／08:15：晨報出刊就推播一次
+ *   "每 2 分鐘 7-21 * * MON-FRI"（寫法：星號/2 7-21 * * MON-FRI）台北 15:00–05:59：台指期夜盤分時 → KV（代號 FUTN，掛在夜盤開始那天的鑰匙下）
  */
 const MIS = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp';
 const APP_ORIGIN = 'https://nc-ai-bot.github.io';
@@ -33,6 +34,7 @@ const list = v => (v || '').split('_').filter(Boolean).map(Number);
 const tpe = () => new Date(Date.now() + 8 * 3600e3);
 const tpeDate = () => tpe().toISOString().slice(0, 10).replace(/-/g, '');
 const tpeHM = () => { const d = tpe(); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
+const nightKeyDate = () => { const d = tpe(); if (d.getUTCHours() < 12) d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10).replace(/-/g, ''); }; // 夜盤掛在 15:00 開始那天
 const fmt = (v, d) => v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? (v >= 1000 ? 0 : 2) : d, maximumFractionDigits: d == null ? (v >= 1000 ? 0 : 2) : d });
 const pct = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 const sha = async s => b64u(await crypto.subtle.digest('SHA-256', te.encode(s))).slice(0, 32);
@@ -223,6 +225,7 @@ export default {
       const d = (u.searchParams.get('date') || tpeDate()).replace(/-/g, '');
       const raw = JSON.parse((await env.TL.get('tl-' + d)) || '{}');
       const want = (u.searchParams.get('codes') || '').split(',').map(s => s.trim()).filter(Boolean);
+      if ((!want.length || want.includes('FUTN')) && d === tpeDate() && nightKeyDate() !== d) { const nr = JSON.parse((await env.TL.get('tl-' + nightKeyDate())) || '{}'); if (nr.FUTN) raw.FUTN = nr.FUTN; } // 凌晨查今天：夜盤還掛在昨天
       const out = want.length ? Object.fromEntries(want.filter(c => raw[c]).map(c => [c, raw[c]])) : raw;
       return json(out, 200, { 'cache-control': 'public, max-age=20' });
     }
@@ -270,6 +273,16 @@ export default {
       await env.TL.put('morn-meta', JSON.stringify({ at: new Date().toISOString(), date: d, sent }), { expirationTtl: 86400 * 10 });
       return;
     }
+    // ---- 夜盤：每 2 分鐘存台指期夜盤分時 ----
+    if (cron.startsWith('*/2 7-21')) {
+      let n; try { n = (await taifex('1')).near; } catch (e) { return; }
+      if (!n || n.last == null || !n.time) return;
+      const key = 'tl-' + nightKeyDate();
+      const cur = JSON.parse((await env.TL.get(key)) || '{}');
+      const arr = cur.FUTN = cur.FUTN || [];
+      if (!arr.length || arr[arr.length - 1][0] !== n.time) { arr.push([n.time, n.last, n.vol]); await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 }); }
+      return;
+    }
     // ---- 盤中：每分鐘 ----
     const { codes, otc } = await universeCodes();
     const items = await quotes(codes, otc);
@@ -282,6 +295,7 @@ export default {
       const arr = cur[it.code] = cur[it.code] || [];
       if (!arr.length || arr[arr.length - 1][0] !== it.time) { arr.push([it.time, it.last, it.vol]); changed++; }
     });
+    try { const fd = (await taifex('0')).near; if (fd && fd.last != null && fd.time && fd.date === d) { const arr = cur.FUT = cur.FUT || []; if (!arr.length || arr[arr.length - 1][0] !== fd.time) { arr.push([fd.time, fd.last, fd.vol]); changed++; } } } catch (e) {} // 台指期日盤分時
     if (changed) await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 });
     // 2) 警示推播（名單來自 app 的 quotes.json）
     const watch = await appJSON('quotes.json', 60, { items: [] });

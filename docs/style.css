@@ -314,3 +314,13 @@ canvas.tl{display:block;width:100%;height:120px}
 .qc .tagx.on{background:rgba(31,138,76,.12);color:var(--up)}
 
 .kv .v small{display:block;font-size:.7rem;font-weight:500;color:var(--muted);margin-top:1px}
+
+/* 更新紀錄 */
+.clnew{margin-left:6px;border:0;border-radius:999px;background:var(--support);color:#fff;font:inherit;font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:1px 6px;vertical-align:middle;cursor:pointer}
+.changelog .newdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--support);margin-left:6px;vertical-align:middle}
+.clv summary{align-items:baseline;gap:8px}
+.clv summary span{color:var(--fg)}
+.clv summary small{margin-left:auto;color:var(--muted);font-size:.78rem}
+.clv ul.lead{margin:4px 0 8px;font-size:.88rem}
+.clmore{margin-top:4px}
+.clmore>.clv{margin-left:12px;margin-top:6px}
