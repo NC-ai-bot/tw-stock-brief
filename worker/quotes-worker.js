@@ -233,7 +233,7 @@ export default {
         if (!raw.FUTN) { for (let i = 1; i <= 10 && !raw.FUTN; i++) { const t = new Date(Date.parse(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}T00:00:00Z`)); t.setUTCDate(t.getUTCDate() - i); const pr = JSON.parse((await env.TL.get('tl-' + t.toISOString().slice(0, 10).replace(/-/g, ''))) || '{}'); if (pr.FUTN) { raw.FUTN = pr.FUTN; raw._nightDate = t.toISOString().slice(0, 10).replace(/-/g, ''); } } } // 當天夜盤還沒開始：給上一個夜盤
       }
       const out = want.length ? Object.fromEntries(want.filter(c => raw[c]).map(c => [c, raw[c]])) : raw;
-      out._date = d; if (raw._nightDate) out._nightDate = raw._nightDate;
+      if (Object.keys(raw).some(k => !k.startsWith('_'))) out._date = d; if (raw._nightDate) out._nightDate = raw._nightDate; // 沒資料就不帶日期
       return json(out, 200, { 'cache-control': 'public, max-age=20' });
     }
     if (u.pathname === '/fut') {

@@ -403,7 +403,7 @@
     try {
       const codes = liveCodes().concat(['FUT', 'FUTN']);
       const r = await fetch(`${LIVE.url}/tl?date=${want}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (!r.ok) return;
-      const j = await r.json(); tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || want; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
+      const j = await r.json(); tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || null; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
       Object.keys(j).filter(k => !k.startsWith('_')).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }); // 夜盤跨午夜：凌晨排在後面
       tlSaved = 0; saveTicks();
       if (!$('#tab-live').hidden) drawAllTL($('#tab-live'));
@@ -993,7 +993,8 @@
     ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('成交量（張）', padL + 2, V.top - 11);
     if (!ticks.length) {
       ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '13px ' + FONT;
-      ctx.fillText(open ? (LIVE.ok === false ? '即時報價連線失敗，無法畫分時' : '等待即時報價…') : '分時走勢：開盤後每分鐘自動累積（不用開著 app），開著時每 3 秒一筆', padL + plotW / 2, P.top + P.h / 2);
+      const msg = open ? [LIVE.ok === false ? '即時報價連線失敗，無法畫分時' : '等待即時報價…'] : ['還沒有分時資料', '開盤後伺服器每分鐘自動累積，收盤後保留到下一個交易日'];
+      msg.forEach((m, i) => ctx.fillText(m, padL + plotW / 2, P.top + P.h / 2 + (i - (msg.length - 1) / 2) * 20));
       if (item && item.last != null && item.time && ymd8(item.date || '') === day) { const px = xs(item.time); ctx.fillStyle = item.last >= prev ? C.up : C.down; ctx.beginPath(); ctx.arc(px, y(item.last), 3, 0, Math.PI * 2); ctx.fill(); ctx.font = '10px ' + FONT; ctx.textAlign = 'right'; ctx.fillText(`${item.time.slice(0, 5)} 收 ${fmt(item.last)}`, px - 6, y(item.last)); }
       $('#clegend').innerHTML = `<span class="d">${esc(day)}</span><span>昨收 ${fmt(prev)}</span>${item && item.high != null ? `<span>高 ${fmt(item.high)}</span><span>低 ${fmt(item.low)}</span><span>量 ${fmt(item.vol || 0, 0)} 張</span>` : ''}`;
       $('#crange').textContent = '09:00 ～ 13:30'; K.geo = { n: 270, padL, padR, W, plotW, T: true };
