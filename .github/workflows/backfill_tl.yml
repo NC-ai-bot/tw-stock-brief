@@ -1,0 +1,22 @@
+name: 補抓分時（鉅亨）
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 要補的日期 YYYYMMDD
+        required: true
+permissions:
+  contents: read
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 tools/backfill_tl.py "${{ inputs.day }}" "tl-${{ inputs.day }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tl-${{ inputs.day }}
+          path: tl-${{ inputs.day }}.json
