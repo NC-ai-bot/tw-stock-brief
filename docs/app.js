@@ -402,8 +402,13 @@
     if (tlServerDay === want && liveCodes().every(c => LIVE.tlLoaded && LIVE.tlLoaded.has(c))) return;
     try {
       const codes = liveCodes().concat(['FUT', 'FUTN']);
-      const r = await fetch(`${LIVE.url}/tl?date=${want}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (!r.ok) return;
-      const j = await r.json(); tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || null; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
+      let j = null;
+      try { const r = await fetch(`${LIVE.url}/tl?date=${want}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (r.ok) j = await r.json(); } catch (e) {}
+      if (want === 'last' && !(j && j._date)) { // Worker 還沒累積到資料（或連不上）：改用隨網頁發布的靜態備份
+        try { const r = await fetch('data/tl/last.json', { cache: 'no-store' }); if (r.ok) { const s = await r.json(); if (s && s._date) j = s; } } catch (e) {}
+      }
+      if (!j) return;
+      tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || null; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
       Object.keys(j).filter(k => !k.startsWith('_')).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }); // 夜盤跨午夜：凌晨排在後面
       tlSaved = 0; saveTicks();
       if (!$('#tab-live').hidden) drawAllTL($('#tab-live'));
