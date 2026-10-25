@@ -404,8 +404,9 @@
       const codes = liveCodes().concat(['FUT', 'FUTN']);
       let j = null;
       try { const r = await fetch(`${LIVE.url}/tl?date=${want}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (r.ok) j = await r.json(); } catch (e) {}
-      if (want === 'last' && !(j && j._date)) { // Worker 還沒累積到資料（或連不上）：改用隨網頁發布的靜態備份
-        try { const r = await fetch('data/tl/last.json', { cache: 'no-store' }); if (r.ok) { const s = await r.json(); if (s && s._date) j = s; } } catch (e) {}
+      const hasTicks = o => !!o && Object.keys(o).some(k => !k.startsWith('_') && Array.isArray(o[k]) && o[k].length);
+      if (want === 'last' && !hasTicks(j)) { // Worker 還沒累積到資料（或連不上）：改用隨網頁發布的靜態備份
+        try { const r = await fetch('data/tl/last.json', { cache: 'no-store' }); if (r.ok) { const s = await r.json(); if (hasTicks(s)) j = s; } } catch (e) {}
       }
       if (!j) return;
       tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || null; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
