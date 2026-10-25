@@ -10,7 +10,7 @@
  *   POST /test  {endpoint}                         送一則測試通知
  *   GET  /                                         狀態（不限來源）
  * Cron：
- *   "* 1-5 * * 1-5"  台北 09:00–13:59 每分鐘：抓全股票池＋指數 → 分時進 KV；依名單判斷警示（跌破／接近停損、可買、開盤超過上限）→ 推播；13:31 後送一次收盤摘要
+ *   "* 1-5 * * 1-5"  台北 09:00–13:59 每分鐘：抓全股票池＋指數 → 分時進 KV；依名單判斷警示（跌破／接近出場線、可買、開盤超過上限）→ 推播；13:31 後送一次收盤摘要
  *   "35 23 * * 0-4"、"50 23 * * 0-4"、"15 0 * * 1-5"  台北 07:35／07:50／08:15：晨報出刊就推播一次
  */
 const MIS = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp';
@@ -170,9 +170,11 @@ function alertsFor(items, watch, state) {
       if (!w.kinds.includes(k)) return;
       const stop = w[k + '_stop']; if (stop == null) return;
       const tag = k === 'i1' ? '（I1 測試）' : '';
+      const entry = w[k + '_entry'];
+      const st = entry ? (stop >= entry ? `鎖利 ${pct((stop / entry - 1) * 100)}` : `停損 ${pct((stop / entry - 1) * 100)}`) : '';
       const d = (q.last / stop - 1) * 100;
-      if (q.last < stop) mark(`break:${k}:${w.code}`, `跌破停損${tag}`, `${nm} 現價 ${fmt(q.last)} 跌破停損 ${fmt(stop)}（${pct(q.pct)}）。晨報以收盤判定出場。`);
-      else if (d < 2) mark(`near:${k}:${w.code}`, `接近停損${tag}`, `${nm} 現價 ${fmt(q.last)}，距停損 ${fmt(stop)} 只剩 ${d.toFixed(1)}%。`);
+      if (q.last < stop) mark(`break:${k}:${w.code}`, `跌破出場線${tag}`, `${nm} 現價 ${fmt(q.last)} 跌破出場線 ${fmt(stop)}${st ? `（${st}）` : ''}，今日 ${pct(q.pct)}。晨報以收盤判定出場。`);
+      else if (d < 2) mark(`near:${k}:${w.code}`, `接近出場線${tag}`, `${nm} 現價 ${fmt(q.last)}，距出場線 ${fmt(stop)} 只剩 ${d.toFixed(1)}%${st ? `（${st}）` : ''}。`);
     });
   });
   return out;
@@ -185,7 +187,7 @@ function closeSummary(items, watch) {
   if (otc) parts.push(`櫃買 ${pct(otc.pct)}`);
   const hold = (watch.items || []).filter(w => w.kinds.includes('pool'));
   const broken = hold.filter(w => { const q = byCode[w.code]; return q && q.last != null && w.pool_stop != null && q.last < w.pool_stop; });
-  if (hold.length) parts.push(`持股 ${hold.length} 檔${broken.length ? `，${broken.map(w => w.name).join('、')} 收在停損下方（晚上晨報結算）` : '，皆在停損上方'}`);
+  if (hold.length) parts.push(`持股 ${hold.length} 檔${broken.length ? `，${broken.map(w => w.name).join('、')} 收在出場線下方（晚上晨報結算）` : '，皆在出場線上方'}`);
   const nw = (watch.items || []).filter(w => w.kinds.includes('new'));
   if (nw.length) parts.push(`今日新增 ${nw.map(w => { const q = byCode[w.code]; return `${w.name} ${q ? fmt(q.last) : ''}${q && w.new_cap != null ? (q.open > w.new_cap ? '（開盤超過上限未成交）' : '') : ''}`; }).join('、')}`);
   return parts.join('；') + '。';
@@ -246,7 +248,7 @@ export default {
     if (u.pathname === '/test') {
       const raw = body.endpoint ? await env.TL.get('sub:' + await sha(body.endpoint)) : null;
       if (!raw) return json({ error: '尚未訂閱' }, 404);
-      const r = await sendPush(JSON.parse(raw).sub, { title: '晨報通知測試', body: '收到這則表示推播設定成功。開盤後會提醒停損、可買與收盤摘要。', tag: 'test', url: APP_URL + '#live' }, await ensureVapid(env.TL), { ttl: 60, urgency: 'high' });
+      const r = await sendPush(JSON.parse(raw).sub, { title: '晨報通知測試', body: '收到這則表示推播設定成功。開盤後會提醒出場線、可買與收盤摘要。', tag: 'test', url: APP_URL + '#live' }, await ensureVapid(env.TL), { ttl: 60, urgency: 'high' });
       return json(r, r.ok ? 200 : 502);
     }
     return json({ error: 'not found' }, 404);

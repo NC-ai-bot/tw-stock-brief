@@ -312,3 +312,5 @@ canvas.tl{display:block;width:100%;height:120px}
 .qc .qg i{font-style:normal;font-weight:600}
 .qc .tagx{font-size:.68rem;padding:1px 6px;border-radius:999px;background:var(--bg);color:var(--muted);margin-left:6px}
 .qc .tagx.on{background:rgba(31,138,76,.12);color:var(--up)}
+
+.kv .v small{display:block;font-size:.7rem;font-weight:500;color:var(--muted);margin-top:1px}
