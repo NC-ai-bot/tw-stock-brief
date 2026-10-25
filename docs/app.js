@@ -206,7 +206,7 @@
       </div>
       <div class="qx">${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
       <button type="button" class="qfive" data-five="FUT" aria-expanded="${OPEN5.has('FUT')}">${OPEN5.has('FUT') ? '收合' : '分時走勢'}</button>
-      ${OPEN5.has('FUT') ? `<div class="q5"><canvas class="tl" data-tl="${which === 'day' ? 'FUT' : 'FUTN'}" height="120"></canvas><div class="tlcap">${which === 'day' ? '日盤 08:45–13:45' : '夜盤 15:00–05:00'} 分時${(LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'] || []).length > 1 ? `（${LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'].length} 筆）` : '：伺服器每 1–2 分鐘自動累積'}</div></div>` : ''}
+      ${OPEN5.has('FUT') ? `<div class="q5"><canvas class="tl" data-tl="${which === 'day' ? 'FUT' : 'FUTN'}" height="120"></canvas><div class="tlcap">${which === 'night' && LIVE.tlNightDate ? fmtD8(LIVE.tlNightDate) + ' ' : tlDayLabel()}${which === 'day' ? '日盤 08:45–13:45' : '夜盤 15:00–05:00'} 分時${(LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'] || []).length > 1 ? `（${LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'].length} 筆）` : '：伺服器每 1–2 分鐘自動累積'}</div></div>` : ''}
     </div>`;
   }
   setInterval(futPoll, 1000);
@@ -241,7 +241,7 @@
         five = `<div class="five"><div class="col"><div class="hd">買進</div>${[0, 1, 2, 3, 4].map(i => row(bv[i], b[i], 'b')).join('')}</div><div class="col"><div class="hd">賣出</div>${[0, 1, 2, 3, 4].map(i => row(av[i], a[i], 'a')).join('')}</div></div>`;
       } else five = `<p class="note" style="margin:4px 0">${LIVE.ok ? '目前沒有五檔掛單資料' : '五檔掛單要連上即時報價才有（連線中…）'}</p>`;
     }
-    return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `分時走勢（${LIVE.ticks[code].length} 筆）` : '分時走勢：開盤後每分鐘自動累積，開著 app 時每 3 秒一筆'}</div></div>`;
+    return `<div class="q5">${five}<canvas class="tl" data-tl="${esc(code)}" height="120"></canvas><div class="tlcap">${LIVE.ticks[code] && LIVE.ticks[code].length > 1 ? `${tlDayLabel()}分時走勢（${LIVE.ticks[code].length} 筆）` : '分時走勢：開盤後每分鐘自動累積，開著 app 時每 3 秒一筆'}</div></div>`;
   }
   // 分時時間軸：股票 09:00–13:30；台指期日盤 08:45–13:45；夜盤 15:00–05:00（跨日，凌晨時間加 24 小時）
   const SESS = {
@@ -352,10 +352,11 @@
     if (K.code && !$('#chart').hidden) set.add(K.code);
     return [...set];
   }
+  function tlDayLabel() { const today = tlKey().slice(3); return LIVE.tlDate && LIVE.tlDate !== today ? fmtD8(LIVE.tlDate) + ' ' : ''; }
   function tlKey() { const t = tpeNow(); return `tl-${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}`; }
   function loadTicks() { try { const raw = localStorage.getItem(tlKey()); if (raw) LIVE.ticks = JSON.parse(raw) || {}; Object.keys(localStorage).forEach(k => { if (k.startsWith('tl-') && k !== tlKey()) localStorage.removeItem(k); }); } catch (e) {} }
   let tlSaved = 0;
-  function saveTicks() { const now = Date.now(); if (now - tlSaved < 15000) return; tlSaved = now; try { localStorage.setItem(tlKey(), JSON.stringify(LIVE.ticks)); } catch (e) {} }
+  function saveTicks() { if (LIVE.tlDay && LIVE.tlDay !== tlKey().slice(3)) return; const now = Date.now(); if (now - tlSaved < 15000) return; tlSaved = now; try { localStorage.setItem(tlKey(), JSON.stringify(LIVE.ticks)); } catch (e) {} }
   let liveLast = 0;
   async function livePoll(force) {
     if (LIVE.busy || document.visibilityState !== 'visible') return;
@@ -381,7 +382,7 @@
       const t = tpeNow(); LIVE.at = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}`;
       q.data_date = (j.items.find(i => i.date) || {}).date || q.data_date;
       if (open) { q.market_open = true; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`; }
-      LIVE.ok = true; saveTicks();
+      LIVE.ok = true; if (LIVE.tlDay && LIVE.tlDay !== tlWantDay()) loadServerTicks(); saveTicks();
       if (!$('#tab-live').hidden) patchLive();
       if (!$('#chart').hidden) drawChart();
     } catch (e) {
@@ -391,22 +392,26 @@
   loadTicks();
   // 伺服器端每分鐘累積的整天分時（Worker Cron → KV）：打開 app 就先載回來，之後本機 3 秒一筆接著畫
   let tlServerDay = null;
+  // 顯示哪一天的分時：交易時段＝今天（本機 3 秒累積＋伺服器 1 分鐘）；非交易時段＝最近一個交易日（伺服器）
+  // 交易日 08:00 起清掉前一天的分時、改顯示今天（開盤前是空的，台指期夜盤仍顯示昨晚到 08:45 換日盤）；其他時間顯示最近一個交易日
+  function tlWantDay() { const t = tpeNow(); const hm = t.getHours() * 60 + t.getMinutes(); return (FORCE_LIVE || (isTradingDay(t) && hm >= 8 * 60)) ? tlKey().slice(3) : 'last'; }
   async function loadServerTicks() {
-    const day = tlKey().slice(3);
-    if (tlServerDay !== day) LIVE.tlLoaded = new Set();
-    if (tlServerDay === day && liveCodes().every(c => LIVE.tlLoaded && LIVE.tlLoaded.has(c))) return;
+    const want = tlWantDay();
+    if (LIVE.tlDay && LIVE.tlDay !== want && !(want === 'last' && LIVE.tlDay === LIVE.tlDate)) { LIVE.ticks = {}; LIVE.tlLoaded = new Set(); tlServerDay = null; } // 換天／換模式：清掉本機的
+    if (tlServerDay !== want) LIVE.tlLoaded = new Set();
+    if (tlServerDay === want && liveCodes().every(c => LIVE.tlLoaded && LIVE.tlLoaded.has(c))) return;
     try {
       const codes = liveCodes().concat(['FUT', 'FUTN']);
-      const r = await fetch(`${LIVE.url}/tl?date=${day}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (!r.ok) return;
-      const j = await r.json(); tlServerDay = day; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
-      Object.keys(j).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); LIVE.ticks[code] = [...m.values()].sort((a, b) => a[0] < b[0] ? -1 : 1); });
+      const r = await fetch(`${LIVE.url}/tl?date=${want}&codes=${codes.join(',')}`, { cache: 'no-store' }); if (!r.ok) return;
+      const j = await r.json(); tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || want; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
+      Object.keys(j).filter(k => !k.startsWith('_')).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }); // 夜盤跨午夜：凌晨排在後面
       tlSaved = 0; saveTicks();
       if (!$('#tab-live').hidden) drawAllTL($('#tab-live'));
       if (!$('#chart').hidden && K.period === 'T') drawChart();
     } catch (e) {}
   }
   setTimeout(loadServerTicks, 800);
-  setInterval(() => { if (document.visibilityState === 'visible' && marketPhase() === 'open') loadServerTicks(); }, 120000); // 盤中每 2 分鐘補一次（別台裝置開著時也能同步）
+  setInterval(() => { if (document.visibilityState === 'visible') loadServerTicks(); }, 120000); // 盤中每 2 分鐘補一次（別台裝置開著時也能同步）
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { tlServerDay = null; loadServerTicks(); } });
   setInterval(livePoll, LIVE.every);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') livePoll(true); });
@@ -959,7 +964,7 @@
     const prev = item && item.prev ? item.prev : (last[6] && all.length > 1 ? all[all.length - 2][4] : last[4]);
     const ticks = (LIVE.ticks[code] || []).slice();
     const open = marketPhase() === 'open';
-    const day = item && item.date ? ymd8(item.date) : last[0];
+    const day = (LIVE.tlDate && LIVE.tlDate !== tlKey().slice(3)) ? ymd8(LIVE.tlDate) : (item && item.date ? ymd8(item.date) : last[0]);
     $('#ctitle').textContent = `${s.code} ${s.name}`;
     const lp = ticks.length ? ticks[ticks.length - 1][1] : (item && item.last != null ? item.last : last[4]);
     const chg = prev ? (lp / prev - 1) * 100 : null;

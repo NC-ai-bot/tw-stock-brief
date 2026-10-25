@@ -222,11 +222,18 @@ export default {
       return res;
     }
     if (u.pathname === '/tl') {
-      const d = (u.searchParams.get('date') || tpeDate()).replace(/-/g, '');
-      const raw = JSON.parse((await env.TL.get('tl-' + d)) || '{}');
+      let d = (u.searchParams.get('date') || tpeDate()).replace(/-/g, '');
+      let raw = {};
+      if (d === 'last') { // 最近一個有分時資料的交易日（往回最多 10 天）
+        for (let i = 0; i < 10 && !Object.keys(raw).length; i++) { const t = new Date(tpe()); t.setUTCDate(t.getUTCDate() - i); d = t.toISOString().slice(0, 10).replace(/-/g, ''); raw = JSON.parse((await env.TL.get('tl-' + d)) || '{}'); }
+      } else raw = JSON.parse((await env.TL.get('tl-' + d)) || '{}');
       const want = (u.searchParams.get('codes') || '').split(',').map(s => s.trim()).filter(Boolean);
-      if ((!want.length || want.includes('FUTN')) && d === tpeDate() && nightKeyDate() !== d) { const nr = JSON.parse((await env.TL.get('tl-' + nightKeyDate())) || '{}'); if (nr.FUTN) raw.FUTN = nr.FUTN; } // 凌晨查今天：夜盤還掛在昨天
+      if (!want.length || want.includes('FUTN')) {
+        if (d === tpeDate() && nightKeyDate() !== d) { const nr = JSON.parse((await env.TL.get('tl-' + nightKeyDate())) || '{}'); if (nr.FUTN) raw.FUTN = nr.FUTN; } // 凌晨查今天：夜盤還掛在昨天
+        if (!raw.FUTN) { for (let i = 1; i <= 10 && !raw.FUTN; i++) { const t = new Date(Date.parse(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}T00:00:00Z`)); t.setUTCDate(t.getUTCDate() - i); const pr = JSON.parse((await env.TL.get('tl-' + t.toISOString().slice(0, 10).replace(/-/g, ''))) || '{}'); if (pr.FUTN) { raw.FUTN = pr.FUTN; raw._nightDate = t.toISOString().slice(0, 10).replace(/-/g, ''); } } } // 當天夜盤還沒開始：給上一個夜盤
+      }
       const out = want.length ? Object.fromEntries(want.filter(c => raw[c]).map(c => [c, raw[c]])) : raw;
+      out._date = d; if (raw._nightDate) out._nightDate = raw._nightDate;
       return json(out, 200, { 'cache-control': 'public, max-age=20' });
     }
     if (u.pathname === '/fut') {
