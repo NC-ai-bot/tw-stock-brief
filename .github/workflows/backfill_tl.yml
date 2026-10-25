@@ -6,7 +6,7 @@ on:
         description: 要補的日期 YYYYMMDD
         required: true
 permissions:
-  contents: read
+  contents: write
 jobs:
   backfill:
     runs-on: ubuntu-latest
@@ -16,7 +16,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 tools/backfill_tl.py "${{ inputs.day }}" "tl-${{ inputs.day }}.json"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tl-${{ inputs.day }}
-          path: tl-${{ inputs.day }}.json
+      - name: 推到 tl-backfill 分支（沙盒抓不到 Actions artifact，用 git 拿）
+        run: |
+          mkdir -p /tmp/out && cp "tl-${{ inputs.day }}.json" /tmp/out/
+          git config user.name github-actions && git config user.email actions@github.com
+          git fetch origin tl-backfill && git checkout tl-backfill || git checkout --orphan tl-backfill
+          git rm -rfq . 2>/dev/null || true
+          cp /tmp/out/*.json . && git add -A && git commit -qm "分時補抓 ${{ inputs.day }}" && git push -f origin tl-backfill
