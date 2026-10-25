@@ -304,6 +304,7 @@ canvas.tl{display:block;width:100%;height:120px}
 /* 時鐘與倒數 */
 .clock{margin-left:auto;margin-right:8px;display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
 .clock b{font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.clock b .dt{font-weight:500;color:var(--muted);margin-right:6px;font-size:.85rem}
 .clock em{font-style:normal;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .clock em.on{color:var(--support)}
 /* 台指期卡 */

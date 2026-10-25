@@ -169,7 +169,7 @@
   function dur(ms) { const s = Math.max(0, Math.floor(ms / 1000)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return (d ? d + ' 天 ' : '') + `${pad2(h)}:${pad2(m)}:${pad2(ss)}`; }
   function tickClock() {
     const t = tpeNow(); const clk = $('#clk'), cd = $('#cd'); if (!clk) return;
-    clk.textContent = `${pad2(t.getHours())}:${pad2(t.getMinutes())}:${pad2(t.getSeconds())}`;
+    clk.innerHTML = `<span class="dt">${t.getFullYear()}/${pad2(t.getMonth() + 1)}/${pad2(t.getDate())}</span>${pad2(t.getHours())}:${pad2(t.getMinutes())}:${pad2(t.getSeconds())}`;
     const hm = t.getHours() * 60 + t.getMinutes();
     if (isTradingDay(t) && hm >= 9 * 60 && hm < 13 * 60 + 30) { const close = new Date(t); close.setHours(13, 30, 0, 0); cd.textContent = '距收盤 ' + dur(close - t); cd.className = 'on'; }
     else { const o = nextOpen(t); const same = o.toDateString() === t.toDateString(); cd.textContent = (same ? '距開盤 ' : (isTradingDay(t) && hm >= 13 * 60 + 30 ? '已收盤・距開盤 ' : '休市・距開盤 ')) + dur(o - t); cd.className = ''; }
