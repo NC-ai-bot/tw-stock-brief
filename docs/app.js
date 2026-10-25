@@ -332,7 +332,9 @@
   }
   // 五檔／分時展開
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-five]'); if (!b) return;
+    let b = e.target.closest('[data-five]');
+    if (!b) { const fc = e.target.closest('.qc-fut'); if (fc && !e.target.closest('canvas')) b = fc.querySelector('[data-five="FUT"]'); } // 台指期字卡：點整張卡也能開合分時
+    if (!b) return;
     e.stopPropagation(); const code = b.dataset.five;
     if (OPEN5.has(code)) OPEN5.delete(code); else OPEN5.add(code);
     if (code === 'FUT') { const old = b.closest('.qc'); const html = futCard(); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; old.replaceWith(t.firstElementChild); drawAllTL(t.firstElementChild); } return; }
