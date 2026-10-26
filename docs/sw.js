@@ -1,5 +1,5 @@
 /* 離線快取：殼層 cache-first，資料與 PDF network-first（斷網時用上次的） */
-const VER = 'v27';
+const VER = 'v28';
 const SHELL = ['./', 'index.html', 'style.css?v=24', 'app.js?v=24', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

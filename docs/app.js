@@ -162,7 +162,7 @@
   }
   const OPEN5 = new Set(); // 展開「五檔／分時」的卡片
   // ---------- 台北時鐘與開收盤倒數 ----------
-  const HOLIDAYS = ['2026-10-26', '2027-01-01']; // 已知休市（補假／元旦）；其餘以週一到五計
+  const HOLIDAYS = ['2026-10-26', '2026-12-25', '2027-01-01']; // 已知休市（補假／元旦）；其餘以週一到五計
   const pad2 = n => String(n).padStart(2, '0');
   function isTradingDay(d) { const wd = d.getDay(); if (wd === 0 || wd === 6) return false; const k = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; return !HOLIDAYS.includes(k); }
   function nextOpen(t) { const d = new Date(t); d.setHours(9, 0, 0, 0); if (d <= t || !isTradingDay(d)) { do { d.setDate(d.getDate() + 1); } while (!isTradingDay(d)); } return d; }

@@ -12,6 +12,7 @@
  * Cron：
  *   "* 1-5 * * 1-5"  台北 09:00–13:59 每分鐘：抓全股票池＋指數 → 分時進 KV；依名單判斷警示（跌破／接近出場線、可買、開盤超過上限）→ 推播；13:31 後送一次收盤摘要
  *   "35 23 * * SUN-THU"、"50 23 * * SUN-THU"、"15 0 * * MON-FRI"  台北 07:35／07:50／08:15：晨報出刊就推播一次
+ *   休市日（週末、證交所公告休市日含補假）：早上不推晨報出刊、盤中不判斷提醒
  *   "每 2 分鐘 7-21 * * MON-FRI"（寫法：星號/2 7-21 * * MON-FRI）台北 15:00–05:59：台指期夜盤分時 → KV（代號 FUTN，掛在夜盤開始那天的鑰匙下）
  */
 const MIS = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp';
@@ -195,6 +196,22 @@ function closeSummary(items, watch) {
   return parts.join('；') + '。';
 }
 
+
+// 休市判斷：週六日，或證交所公告的休市日（含補假）；結果快取在 KV 一天。API 失敗時當作交易日（寧可多跑）
+async function isHoliday(env, d) {
+  const dt = new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}T00:00:00Z`); const dow = dt.getUTCDay();
+  if (dow === 0 || dow === 6) return true;
+  const k = 'hol-' + d.slice(0, 4);
+  let list = null; try { list = JSON.parse((await env.TL.get(k)) || 'null'); } catch (e) {}
+  if (!list) {
+    try {
+      const r = await fetch(`https://www.twse.com.tw/rwd/zh/holidaySchedule/holidaySchedule?date=${d.slice(0, 4)}&response=json`, { headers: { 'user-agent': 'Mozilla/5.0' } });
+      const j = await r.json(); if (j && j.stat === 'ok') { list = (j.data || []).map(x => String(x[0]).replace(/-/g, '')); await env.TL.put(k, JSON.stringify(list), { expirationTtl: 86400 }); }
+    } catch (e) {}
+  }
+  return !!(list && list.includes(d));
+}
+
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
@@ -268,6 +285,7 @@ export default {
     if (!env.TL) return;
     const cron = event.cron || '';
     const d = tpeDate();
+    if (!cron.startsWith('*/2 7-21') && await isHoliday(env, d)) { await env.TL.put('tl-meta', JSON.stringify({ at: new Date().toISOString(), date: d, holiday: true }), { expirationTtl: 86400 * 10 }); return; } // 休市日：不推晨報出刊、不判斷提醒（10/26 補假曾誤發「可買」）
     // ---- 早上：晨報出刊通知（三個時間點都會檢查，送過一次就不再送） ----
     if (cron.startsWith('35 23') || cron.startsWith('50 23') || cron.startsWith('15 0')) {
       if (await env.TL.get('morn-' + d)) return;
@@ -304,6 +322,7 @@ export default {
     });
     try { const fd = (await taifex('0')).near; if (fd && fd.last != null && fd.time && fd.date === d) { const arr = cur.FUT = cur.FUT || []; if (!arr.length || arr[arr.length - 1][0] !== fd.time) { arr.push([fd.time, fd.last, fd.vol]); changed++; } } } catch (e) {} // 台指期日盤分時
     if (changed) await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 });
+    if (!items.some(it => it.date === d)) return; // 證交所回的還是前一個交易日的報價（臨時休市）：不判斷提醒
     // 2) 警示推播（名單來自 app 的 quotes.json）
     const watch = await appJSON('quotes.json', 60, { items: [] });
     const akey = 'al-' + d;
