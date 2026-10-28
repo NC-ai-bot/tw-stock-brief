@@ -218,7 +218,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (u.pathname === '/') {
       const st = { ok: true, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
-      if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
+      if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); const nm = await env.TL.get('night-meta'); if (nm) st.last_night = JSON.parse(nm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
       return json(st);
     }
     if (!allowed(req)) return json({ error: '請從晨報 app 使用' }, 403);
@@ -306,6 +306,7 @@ export default {
       const cur = JSON.parse((await env.TL.get(key)) || '{}');
       const arr = cur.FUTN = cur.FUTN || [];
       if (!arr.length || arr[arr.length - 1][0] !== n.time) { arr.push([n.time, n.last, n.vol]); await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 }); }
+      await env.TL.put('night-meta', JSON.stringify({ at: new Date().toISOString(), key, n: arr.length }), { expirationTtl: 86400 * 10 });
       return;
     }
     // ---- 盤中：每分鐘 ----
@@ -315,10 +316,12 @@ export default {
     const key = 'tl-' + d;
     const cur = JSON.parse((await env.TL.get(key)) || '{}');
     let changed = 0;
+    const now = tpe(); const stamp = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:00`; // 這一分鐘的分時時間戳（每分鐘一筆）
     items.forEach(it => {
-      if (!it.code || it.last == null || it.est || !it.time || it.date !== d) return;
+      if (!it.code || it.last == null || it.date !== d) return;   // 證交所常回 z='-'（est＝用買賣價估），仍要記一筆，否則熱門股的分時會缺一大半（10/28 台積電只有 27 筆）
       const arr = cur[it.code] = cur[it.code] || [];
-      if (!arr.length || arr[arr.length - 1][0] !== it.time) { arr.push([it.time, it.last, it.vol]); changed++; }
+      const t = it.est ? stamp : (it.time || stamp);
+      if (!arr.length || arr[arr.length - 1][0] < t) { arr.push([t, it.last, it.vol]); changed++; }
     });
     try { const fd = (await taifex('0')).near; if (fd && fd.last != null && fd.time && fd.date === d) { const arr = cur.FUT = cur.FUT || []; if (!arr.length || arr[arr.length - 1][0] !== fd.time) { arr.push([fd.time, fd.last, fd.vol]); changed++; } } } catch (e) {} // 台指期日盤分時
     if (changed) await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 });
