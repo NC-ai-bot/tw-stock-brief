@@ -1,0 +1,11 @@
+name: probe
+on:
+  workflow_dispatch:
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in "https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ/pipeline/eve/meta.json" "https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ/archive.json" "https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ"; do
+            echo "== $u"; curl -sS -L -o /tmp/o -w '%{http_code} %{content_type} %{size_download}\n' -A 'Mozilla/5.0' "$u"; head -c 300 /tmp/o; echo
+          done
