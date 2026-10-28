@@ -1,11 +1,18 @@
 name: probe
 on:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   p:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - run: |
+          mkdir -p /tmp/out; : > /tmp/out/probe.txt
           for u in "https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ/pipeline/eve/meta.json" "https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ/archive.json" "https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ"; do
-            echo "== $u"; curl -sS -L -o /tmp/o -w '%{http_code} %{content_type} %{size_download}\n' -A 'Mozilla/5.0' "$u"; head -c 300 /tmp/o; echo
+            echo "== $u" >> /tmp/out/probe.txt; curl -sS -L -o /tmp/o -w '%{http_code} %{content_type} %{size_download}\n' -A 'Mozilla/5.0' "$u" >> /tmp/out/probe.txt; head -c 400 /tmp/o >> /tmp/out/probe.txt; echo >> /tmp/out/probe.txt
           done
+          git config user.name github-actions && git config user.email actions@github.com
+          git fetch origin tl-backfill && git checkout tl-backfill
+          cp /tmp/out/probe.txt . && git add probe.txt && git commit -qm probe && git push origin tl-backfill
