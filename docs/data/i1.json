@@ -1,9 +1,55 @@
 {
- "date": "2026-10-22",
- "bull": false,
- "max_new": 0,
+ "date": "2026-10-28",
+ "bull": true,
+ "max_new": 3,
  "room": 10,
- "new": [],
+ "new": [
+  {
+   "code": "1303",
+   "name": "南亞",
+   "entry_date": "2026-10-28",
+   "ref": 319.0,
+   "cap": 329.51,
+   "w": 0.0607,
+   "equity_at": 1.0,
+   "score": 4.86,
+   "atr_pct": 6.59,
+   "status": "pending",
+   "entry": 319.0,
+   "days": 0,
+   "stop_now": 255.94
+  },
+  {
+   "code": "2412",
+   "name": "中華電",
+   "entry_date": "2026-10-28",
+   "ref": 156.5,
+   "cap": 157.78,
+   "w": 0.15,
+   "equity_at": 1.0,
+   "score": 4.82,
+   "atr_pct": 1.64,
+   "status": "pending",
+   "entry": 156.5,
+   "days": 0,
+   "stop_now": 148.8
+  },
+  {
+   "code": "6213",
+   "name": "聯茂",
+   "entry_date": "2026-10-28",
+   "ref": 778.0,
+   "cap": 808.01,
+   "w": 0.0519,
+   "equity_at": 1.0,
+   "score": 4.39,
+   "atr_pct": 7.71,
+   "status": "pending",
+   "entry": 778.0,
+   "days": 0,
+   "stop_now": 597.97
+  }
+ ],
  "filled": [],
  "unfilled": [],
  "exits": [],
@@ -15,72 +61,72 @@
   "hit": null,
   "cum": 0.0,
   "open": 0,
-  "bench": 0.0
+  "bench": 1.64
  },
  "top": [
   {
-   "code": "6213",
-   "name": "聯茂",
-   "score": 5.35,
-   "close": 777.0,
-   "adx": 31.6,
-   "ret120": 209.1
+   "code": "1303",
+   "name": "南亞",
+   "score": 4.86,
+   "close": 319.0,
+   "adx": 40.7,
+   "ret120": 262.6
   },
   {
    "code": "2412",
    "name": "中華電",
-   "score": 5.17,
-   "close": 158.0,
-   "adx": 55.1,
-   "ret120": 20.2
+   "score": 4.82,
+   "close": 156.5,
+   "adx": 58.4,
+   "ret120": 20.0
   },
   {
-   "code": "1303",
-   "name": "南亞",
-   "score": 5.14,
-   "close": 301.0,
-   "adx": 43.5,
-   "ret120": 230.2
+   "code": "6213",
+   "name": "聯茂",
+   "score": 4.39,
+   "close": 778.0,
+   "adx": 30.2,
+   "ret120": 170.5
   },
   {
-   "code": "6505",
-   "name": "台塑化",
-   "score": 4.73,
-   "close": 106.5,
-   "adx": 57.3,
-   "ret120": 101.7
+   "code": "4938",
+   "name": "和碩",
+   "score": 4.34,
+   "close": 108.0,
+   "adx": 41.7,
+   "ret120": 38.8
   },
   {
    "code": "5876",
    "name": "上海商銀",
-   "score": 4.69,
-   "close": 54.6,
-   "adx": 48.9,
-   "ret120": 45.7
+   "score": 4.25,
+   "close": 53.8,
+   "adx": 49.8,
+   "ret120": 46.4
   },
   {
    "code": "1101",
    "name": "台泥",
-   "score": 4.45,
-   "close": 27.95,
-   "adx": 51.5,
-   "ret120": 18.0
+   "score": 4.14,
+   "close": 28.0,
+   "adx": 53.7,
+   "ret120": 18.5
   },
   {
-   "code": "2884",
-   "name": "玉山金",
-   "score": 3.99,
-   "close": 49.75,
-   "adx": 44.4,
-   "ret120": 60.1
+   "code": "2801",
+   "name": "彰銀",
+   "score": 3.98,
+   "close": 29.95,
+   "adx": 50.4,
+   "ret120": 52.4
   },
   {
-   "code": "1102",
-   "name": "亞泥",
-   "score": 3.66,
-   "close": 38.55,
-   "adx": 36.8,
-   "ret120": 16.6
+   "code": "6505",
+   "name": "台塑化",
+   "score": 3.67,
+   "close": 103.0,
+   "adx": 52.5,
+   "ret120": 95.1
   }
  ],
  "params": {
