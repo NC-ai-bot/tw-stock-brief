@@ -1,0 +1,14 @@
+執行時間: Thu Oct 29 02:34:11 CST 2026
+add_repo 回傳: 本次 session 的 ToolSearch 找不到 mcp__claude-code-remote__add_repo（query 'select:mcp__claude-code-remote__add_repo,PushNotification' 只載入了 PushNotification；'+add_repo' 回 'No matching deferred tools found'）。系統提示已將 nc-ai-bot/tw-stock-brief 列為本 session 的 GitHub 存取範圍，故直接 clone。
+clone 花的秒數: 1.02
+--- git remote -v ---
+origin	https://github.com/NC-ai-bot/tw-stock-brief (fetch)
+origin	https://github.com/NC-ai-bot/tw-stock-brief (push)
+--- gh auth status ---
+github.com
+  X Failed to log in to github.com using token (GH_TOKEN)
+  - Active account: true
+  - The token in GH_TOKEN is invalid.
+--- gh --version ---
+gh version 2.89.0 (2026-03-26)
+https://github.com/cli/cli/releases/tag/v2.89.0
