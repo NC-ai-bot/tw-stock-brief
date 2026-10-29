@@ -329,3 +329,4 @@ canvas.tl{display:block;width:100%;height:120px}
 .posrow .lv{font-size:.68rem;margin-left:4px;padding:0 5px;border-radius:7px;background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1);vertical-align:1px}
 .posrow .ok{font-size:.72rem;color:var(--down)}
 .posrow .warn{font-size:.72rem;color:var(--up)}
+.mkt .lv{font-style:normal;font-size:.66rem;margin-left:4px;padding:0 5px;border-radius:7px;background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1)}

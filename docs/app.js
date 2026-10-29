@@ -39,6 +39,13 @@
   }
 
   // ---------- header ----------
+  // 今天的即時指數（證交所回的日期是今天才算）
+  function liveIdx(k) {
+    const q = D.quotes; if (!q || !q.index) return null;
+    const x = q.index[k === 'TSE01' ? 't00' : 'o00']; if (!x || x.last == null || !x.date) return null;
+    const t = tpeNow(); const today = `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}`;
+    return x.date === today ? x : null;
+  }
   function renderHeader() {
     const m = D.meta || {};
     const dl = $('#dateline');
@@ -52,7 +59,9 @@
       box.hidden = false;
       box.innerHTML = ['TSE01', 'OTC01'].filter(k => mk[k]).map(k => {
         const x = mk[k];
-        return `<span data-k="${k}"><small>${esc(x.name.replace('指數', ''))}${x.state ? '・' + esc(x.state) : ''}</small><b>${fmt(x.close)}</b><em class="${cls(x.chg)}">${pct(x.chg)}</em></span>`;
+        const lq = liveIdx(k); // 盤中：改顯示即時指數與今日漲跌（約 5 秒延遲），收盤後回到資料日收盤
+        const v = lq ? lq.last : x.close, c = lq ? lq.chg_pct : x.chg;
+        return `<span data-k="${k}"><small>${esc(x.name.replace('指數', ''))}${x.state ? '・' + esc(x.state) : ''}${lq ? '<i class="lv">盤中</i>' : ''}</small><b>${fmt(v)}</b><em class="${cls(c)}">${pct(c)}</em></span>`;
       }).join('');
     } else box.hidden = true;
     const stale = $('#stale');
@@ -386,7 +395,7 @@
       if (open) { q.market_open = true; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`; }
       LIVE.ok = true; if (LIVE.tlDay && LIVE.tlDay !== tlWantDay()) loadServerTicks(); saveTicks();
       if (!$('#tab-live').hidden) patchLive();
-      patchPool();
+      patchPool(); renderHeader();
       if (!$('#chart').hidden) drawChart();
     } catch (e) {
       if (LIVE.ok !== false) { LIVE.ok = false; if (!$('#tab-live').hidden) patchLive(); }
