@@ -325,3 +325,7 @@ canvas.tl{display:block;width:100%;height:120px}
 .clv ul.lead{margin:4px 0 8px;font-size:.88rem}
 .clmore{margin-top:4px}
 .clmore>.clv{margin-left:12px;margin-top:6px}
+/* 持股列：盤中即時報價標記 */
+.posrow .lv{font-size:.68rem;margin-left:4px;padding:0 5px;border-radius:7px;background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1);vertical-align:1px}
+.posrow .ok{font-size:.72rem;color:var(--down)}
+.posrow .warn{font-size:.72rem;color:var(--up)}

@@ -386,6 +386,7 @@
       if (open) { q.market_open = true; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`; }
       LIVE.ok = true; if (LIVE.tlDay && LIVE.tlDay !== tlWantDay()) loadServerTicks(); saveTicks();
       if (!$('#tab-live').hidden) patchLive();
+      patchPool();
       if (!$('#chart').hidden) drawChart();
     } catch (e) {
       if (LIVE.ok !== false) { LIVE.ok = false; if (!$('#tab-live').hidden) patchLive(); }
@@ -544,7 +545,7 @@
     let h = '';
     h += `<section class="sec support"><h2>目前持股<span class="cnt">${pos.length}／${((D.pool_out || {}).params || {}).pool_max || 10} 檔</span></h2><div class="body">
       ${pos.length ? pos.map(posrow).join('') : '<p class="empty">目前池內無持股</p>'}
-      <p class="note">損益以資料日收盤計算。「出場線」是超級趨勢線，會隨股價上移、不設持有天數——在進場價之上時是鎖住獲利的移動停利，之下才是停損；另有虧損逾 10% 的強制停損。其他組別維持原停損與 20 天上限。</p></div></section>`;
+      <p class="note pool-note">${poolNote()}</p></div></section>`;
     const eq = p.equity || [];
     const last = eq.length ? (eq[eq.length - 1].eq - 1) * 100 : null;
     h += `<section class="sec plain"><h2>觀察池績效<span class="cnt">${md(p.start)} 起</span></h2><div class="body">
@@ -561,20 +562,39 @@
       <span class="sub">${grp(x.group)}・${md(x.entry_date)} ${fmt(x.entry)} → ${md(x.exit_date)} ${fmt(x.exit)}・${x.days} 天・${esc(why(x.why))}</span></div>`).join('') : '<p class="empty">尚無結算</p>'}</div></section>`;
     el.innerHTML = h;
   }
+  // 今天的即時報價（只在交易日、證交所回的是今天的成交時才算；開盤前與休市日回 null，改用資料日收盤）
+  function liveQ(code) {
+    const q = D.quotes; if (!q || !q.items) return null;
+    const x = q.items.find(i => i.code === code); if (!x || x.last == null || !x.date) return null;
+    const t = tpeNow(); const today = `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}`;
+    return x.date === today ? x : null;
+  }
   function posrow(x) {
     const pending = x.status === 'pending';
-    const dist = x.stop_dist;
+    const lq = liveQ(x.code);
+    const last = lq ? lq.last : x.last;
+    const ret = lq && x.entry ? (last / x.entry - 1) * 100 : x.ret;
+    const dist = lq && x.stop_now ? (last / x.stop_now - 1) * 100 : x.stop_dist;
+    const day = lq && lq.chg_pct != null ? `<span class="${cls(lq.chg_pct)}">今日 ${pct(lq.chg_pct, 1)}</span>` : '';
     const w = dist == null ? 0 : Math.max(2, Math.min(100, dist * 5));
+    const capTag = pending && lq && x.cap != null ? (last <= x.cap ? '<span class="ok">在上限內</span>' : '<span class="warn">超過上限</span>') : '';
     return `<div class="posrow" data-k="${esc(x.code)}">
-      <div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span>${pending ? '<span class="pend">今日可買</span>' : ''}<span class="ret ${cls(x.ret)}">${pending ? '' : pct(x.ret)}</span></div>
+      <div class="hd"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span>${pending ? '<span class="pend">今日可買</span>' : ''}<span class="ret ${cls(ret)}">${pending ? '' : pct(ret)}</span></div>
       <div class="meta"><span>${grp(x.group)}・${esc(x.sector || '')}</span>
         <span>${md(x.entry_date)} 入選</span>
-        <span>${pending ? `參考 <b>${fmt(x.ref)}</b>・上限 <b>${fmt(x.cap)}</b>` : `進場 <b>${fmt(x.entry)}</b> → 現價 <b>${fmt(x.last)}</b>`}</span>
+        <span>${pending ? `參考 <b>${fmt(x.ref)}</b>・上限 <b>${fmt(x.cap)}</b>${lq ? `・現價 <b>${fmt(last)}</b> ${capTag}` : ''}` : `進場 <b>${fmt(x.entry)}</b> → 現價 <b>${fmt(last)}</b>${lq ? '<span class="lv">盤中</span>' : ''}`} ${day}</span>
         <span>出場線 <b>${fmt(x.stop_now)}</b>${dist != null ? `（距 ${pct(dist, 1)}${!pending && x.entry ? '・' + exitTag(x.stop_now, x.entry) : ''}）` : ''}</span>
         <span>持有 ${x.days}${x.group === '回檔站回' ? '' : '/20'} 天</span></div>
       <div class="bar ${dist != null && dist < 2 ? 'tight' : ''}" title="距出場線 ${pct(dist, 1)}"><i style="width:${w}%"></i></div>
     </div>`;
   }
+  // 盤中每次拿到新報價就把持股列換成最新值（只換列，不重畫整頁，捲動位置不動）
+  function patchPool() {
+    const el = $('#tab-pool'); if (!el || el.hidden || !D.pool) return;
+    (D.pool.positions || []).forEach(x => { const old = el.querySelector(`.posrow[data-k="${x.code}"]`); if (!old) return; const t = document.createElement('div'); t.innerHTML = posrow(x); old.replaceWith(t.firstElementChild); });
+    const n = el.querySelector('.pool-note'); if (n) n.textContent = poolNote();
+  }
+  function poolNote() { return (D.quotes && D.quotes.market_open && marketPhase() === 'open' ? '盤中損益以即時報價計算（約 5 秒延遲），收盤後改為收盤價。' : '損益以資料日收盤計算。') + '「出場線」是超級趨勢線，會隨股價上移、不設持有天數——在進場價之上時是鎖住獲利的移動停利，之下才是停損；另有虧損逾 10% 的強制停損。其他組別維持原停損與 20 天上限。'; }
   function spark(eq) {
     if (!eq || eq.length < 2) return '';
     const v = eq.map(e => e.eq), lo = Math.min(...v, 1), hi = Math.max(...v, 1);
