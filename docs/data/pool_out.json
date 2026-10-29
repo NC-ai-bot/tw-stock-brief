@@ -1,78 +1,10 @@
 {
- "date": "2026-10-28",
- "bull": true,
- "max_new": 3,
+ "date": "2026-10-29",
+ "bull": false,
+ "max_new": 1,
  "paused": false,
- "new": [
-  {
-   "code": "1815",
-   "name": "富喬",
-   "sector": "電子級玻纖布",
-   "group": "回檔站回",
-   "entry_date": "2026-10-28",
-   "entry": 144.0,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 126.71,
-   "days": 0,
-   "last": 144.0,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 13.65,
-   "ref": 144.0,
-   "cap": 149.96,
-   "lot": 144000,
-   "status": "pending"
-  },
-  {
-   "code": "2882",
-   "name": "國泰金",
-   "sector": "金控壽險",
-   "group": "回檔站回",
-   "entry_date": "2026-10-28",
-   "entry": 115.5,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 106.28,
-   "days": 0,
-   "last": 115.5,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 8.68,
-   "ref": 115.5,
-   "cap": 117.16,
-   "lot": 115500,
-   "status": "pending"
-  },
-  {
-   "code": "3167",
-   "name": "大量",
-   "sector": "PCB 設備",
-   "group": "回檔站回",
-   "entry_date": "2026-10-28",
-   "entry": 1030.0,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 901.23,
-   "days": 0,
-   "last": 1030.0,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 14.29,
-   "ref": 1030.0,
-   "cap": 1064.25,
-   "lot": 1030000,
-   "status": "pending"
-  }
- ],
- "exits": [],
- "holding": [
+ "new": [],
+ "exits": [
   {
    "code": "3005",
    "name": "神基",
@@ -84,13 +16,18 @@
     "MA10",
     null
    ],
-   "stop_now": 122.75,
-   "days": 7,
-   "last": 125.0,
-   "ret": 3.31,
-   "prev_close": 125.0,
-   "stop_dist": 1.83
-  },
+   "stop_now": 123.15,
+   "days": 8,
+   "last": 123.0,
+   "ret": 1.65,
+   "prev_close": 123.0,
+   "stop_dist": -0.12,
+   "exit_date": "2026-10-29",
+   "exit": 123.0,
+   "why": "stop"
+  }
+ ],
+ "holding": [
   {
    "code": "5876",
    "name": "上海商銀",
@@ -102,12 +39,12 @@
     "MA10",
     null
    ],
-   "stop_now": 53.67,
-   "days": 7,
-   "last": 53.8,
-   "ret": 0.75,
-   "prev_close": 53.8,
-   "stop_dist": 0.24
+   "stop_now": 53.93,
+   "days": 8,
+   "last": 54.5,
+   "ret": 2.06,
+   "prev_close": 54.5,
+   "stop_dist": 1.06
   },
   {
    "code": "2834",
@@ -121,11 +58,11 @@
     null
    ],
    "stop_now": 17.71,
-   "days": 6,
+   "days": 7,
    "last": 18.0,
    "ret": -0.28,
    "prev_close": 18.0,
-   "stop_dist": 1.67
+   "stop_dist": 1.62
   },
   {
    "code": "2356",
@@ -138,12 +75,12 @@
     "MA20",
     null
    ],
-   "stop_now": 59.39,
-   "days": 4,
-   "last": 63.8,
-   "ret": 6.33,
-   "prev_close": 63.8,
-   "stop_dist": 7.43
+   "stop_now": 59.46,
+   "days": 5,
+   "last": 61.4,
+   "ret": 2.33,
+   "prev_close": 61.4,
+   "stop_dist": 3.25
   },
   {
    "code": "6173",
@@ -157,11 +94,11 @@
     null
    ],
    "stop_now": 247.84,
-   "days": 2,
-   "last": 289.5,
-   "ret": -4.97,
-   "prev_close": 289.5,
-   "stop_dist": 16.81,
+   "days": 3,
+   "last": 298.0,
+   "ret": -2.18,
+   "prev_close": 298.0,
+   "stop_dist": 20.24,
    "ref": 293.5,
    "cap": 304.64,
    "lot": 293500,
@@ -181,34 +118,101 @@
     null
    ],
    "stop_now": 1723.28,
-   "days": 1,
-   "last": 1955.0,
-   "ret": -0.64,
-   "prev_close": 1955.0,
-   "stop_dist": 13.45,
+   "days": 2,
+   "last": 1900.0,
+   "ret": -3.43,
+   "prev_close": 1900.0,
+   "stop_dist": 10.25,
    "ref": 1925.0,
    "cap": 1967.5,
    "lot": 1925000,
    "status": "filled",
    "fill_date": "2026-10-28",
    "fill_how": "上限價"
+  },
+  {
+   "code": "1815",
+   "name": "富喬",
+   "sector": "電子級玻纖布",
+   "group": "回檔站回",
+   "entry_date": "2026-10-28",
+   "entry": 146.0,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 126.71,
+   "days": 1,
+   "last": 137.0,
+   "ret": -6.16,
+   "prev_close": 137.0,
+   "stop_dist": 8.12,
+   "ref": 144.0,
+   "cap": 149.96,
+   "lot": 144000,
+   "status": "filled",
+   "fill_date": "2026-10-29",
+   "fill_how": "開盤"
+  },
+  {
+   "code": "2882",
+   "name": "國泰金",
+   "sector": "金控壽險",
+   "group": "回檔站回",
+   "entry_date": "2026-10-28",
+   "entry": 115.5,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 107.17,
+   "days": 1,
+   "last": 116.5,
+   "ret": 0.87,
+   "prev_close": 116.5,
+   "stop_dist": 8.71,
+   "ref": 115.5,
+   "cap": 117.16,
+   "lot": 115500,
+   "status": "filled",
+   "fill_date": "2026-10-29",
+   "fill_how": "開盤"
+  },
+  {
+   "code": "3167",
+   "name": "大量",
+   "sector": "PCB 設備",
+   "group": "回檔站回",
+   "entry_date": "2026-10-28",
+   "entry": 1015.0,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 901.23,
+   "days": 1,
+   "last": 946.0,
+   "ret": -6.8,
+   "prev_close": 946.0,
+   "stop_dist": 4.97,
+   "ref": 1030.0,
+   "cap": 1064.25,
+   "lot": 1030000,
+   "status": "filled",
+   "fill_date": "2026-10-29",
+   "fill_how": "開盤"
   }
  ],
  "risk": [
   {
-   "code": "3005",
-   "name": "神基",
-   "text": "距出場線 122.75 只剩 +1.83%"
-  },
-  {
    "code": "5876",
    "name": "上海商銀",
-   "text": "距出場線 53.67 只剩 +0.24%"
+   "text": "距出場線 53.93 只剩 +1.06%"
   },
   {
    "code": "2834",
    "name": "臺企銀",
-   "text": "距出場線 17.71 只剩 +1.67%"
+   "text": "距出場線 17.71 只剩 +1.62%"
   }
  ],
  "unfilled": [],
@@ -237,15 +241,15 @@
  },
  "summary": {
   "start": "2026-10-14",
-  "closed": 4,
-  "open": 9,
-  "cum": -3.21,
-  "avg": -4.47,
-  "hit": 0,
+  "closed": 5,
+  "open": 8,
+  "cum": -4.84,
+  "avg": -3.25,
+  "hit": 20,
   "stop_rate": 100,
-  "win_avg": null,
+  "win_avg": 1.65,
   "loss_avg": -4.47,
-  "bench": -3.85
+  "bench": -5.09
  },
  "ev": {
   "n": 532,
