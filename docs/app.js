@@ -317,8 +317,14 @@
     if (!any) h += '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">目前沒有要盯的股票。</p></div></section>';
     if (it.some(x => x.est)) h += '<p class="note" style="margin:0">* 尚無成交，以買一／賣一估計。</p>';
     h += searchBox();
+    h += `<section class="sec plain"><h2>伺服器狀態</h2><div class="body"><pre id="svstat" class="svstat">讀取中…</pre><p class="note">即時報價中繼（Cloudflare Worker）的版本與排程狀態：last_cron＝盤中每分鐘分時、last_morning＝晨報出刊推播、last_night＝台指期夜盤分時；沒有 last_night 代表夜盤排程沒在跑。</p></div></section>`;
     el.innerHTML = h;
     drawAllTL(el);
+    loadStatus();
+  }
+  async function loadStatus() {
+    const el = $('#svstat'); if (!el) return;
+    try { const r = await fetch(`${LIVE.url}/status`, { cache: 'no-store' }); const j = await r.json(); el.textContent = JSON.stringify(j, null, 1); } catch (e) { el.textContent = '連不到伺服器：' + e; }
   }
   const LGROUPS = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['exit', '今日出場', 'down'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1'], ['ext', '趨勢延續觀察（測試）', 'strong']];
   function statLine(q, phase) {
