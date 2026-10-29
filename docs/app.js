@@ -429,6 +429,18 @@
     } catch (e) {}
   }
   setTimeout(loadServerTicks, 800);
+  // 台指期分時：伺服器每 1–2 分鐘累積一筆，app 開著時每 60 秒把伺服器的補進來（本機 3／10 秒一筆只在 app 開著時才有，夜盤常是零星幾筆）
+  function mergeTicks(code, rows) { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (rows || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }
+  async function refreshFutTicks() {
+    if (document.visibilityState !== 'visible' || !futSession()) return;
+    try {
+      const r = await fetch(`${LIVE.url}/tl?date=${tlWantDay()}&codes=FUT,FUTN`, { cache: 'no-store' }); if (!r.ok) return; const j = await r.json();
+      let changed = false; ['FUT', 'FUTN'].forEach(c => { if (Array.isArray(j[c]) && j[c].length) { const n0 = (LIVE.ticks[c] || []).length; mergeTicks(c, j[c]); if ((LIVE.ticks[c] || []).length !== n0) changed = true; } });
+      if (j._nightDate) LIVE.tlNightDate = j._nightDate;
+      if (changed) { saveTicks(); if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); if (old) drawAllTL(old); } if (!$('#chart').hidden && K.period === 'T') drawChart(); }
+    } catch (e) {}
+  }
+  setInterval(refreshFutTicks, 60000); setTimeout(refreshFutTicks, 3000);
   setInterval(() => { if (document.visibilityState === 'visible') loadServerTicks(); }, 120000); // 盤中每 2 分鐘補一次（別台裝置開著時也能同步）
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { tlServerDay = null; loadServerTicks(); } });
   setInterval(livePoll, LIVE.every);
