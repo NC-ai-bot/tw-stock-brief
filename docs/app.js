@@ -324,7 +324,7 @@
   }
   async function loadStatus() {
     const el = $('#svstat'); if (!el) return;
-    try { const r = await fetch(`${LIVE.url}/status`, { cache: 'no-store' }); const j = await r.json(); el.textContent = JSON.stringify(j, null, 1); } catch (e) { el.textContent = '連不到伺服器：' + e; }
+    try { const r = await fetch(`${LIVE.url}/`, { cache: 'no-store' }); const j = await r.json(); el.textContent = JSON.stringify(j, null, 1); } catch (e) { el.textContent = '連不到伺服器：' + e; }
   }
   const LGROUPS = [['new', '今日新增', 'w4'], ['pool', '觀察池持股', 'support'], ['exit', '今日出場', 'down'], ['i1new', 'I1 今日新增（測試）', 'i1'], ['i1', 'I1 模擬持股（測試）', 'i1'], ['ext', '趨勢延續觀察（測試）', 'strong']];
   function statLine(q, phase) {
