@@ -182,6 +182,30 @@ function alertsFor(items, watch, state) {
   });
   return out;
 }
+/** 警示名單：直接從 app 的 pool_out／pool／i1／ext 組出來（與 tools/quotes.py 的 watchlist() 相同規則）。
+ *  以前讀 quotes.json，但那個檔靠 GitHub Actions 每 5 分鐘更新，排程常延遲到 09:45 以後才第一次跑，
+ *  開盤後那段時間推的就是前一天的名單（10/29 早上推成 10/28 的信昌電）。
+ *  回傳 null 代表 app 的資料不是今天這一期（meta.file_date ≠ 今天），這時不推任何警示。 */
+async function buildWatch(d) {
+  const meta = await appJSON('meta.json', 0, null);
+  if (!meta || meta.file_date !== d) return null;
+  const [po, pool, i1, ext] = await Promise.all([appJSON('pool_out.json', 0, {}), appJSON('pool.json', 0, {}), appJSON('i1.json', 0, {}), appJSON('ext.json', 0, {})]);
+  const items = {};
+  const add = (x, kind, kw) => {
+    if (!x || !x.code) return;
+    const it = items[x.code] = items[x.code] || { code: x.code, name: x.name, kinds: [] };
+    if (!it.kinds.includes(kind)) it.kinds.push(kind);
+    Object.entries(kw || {}).forEach(([k, v]) => { if (v != null) it[kind + '_' + k] = v; });
+  };
+  (po.new || []).forEach(x => add(x, 'new', { cap: x.cap, stop: x.stop_now, ref: x.ref ?? x.entry, group: x.group }));
+  (pool.positions || []).forEach(x => x.status === 'pending' ? add(x, 'new', { cap: x.cap, stop: x.stop_now, ref: x.ref ?? x.entry, group: x.group }) : add(x, 'pool', { stop: x.stop_now, entry: x.entry, group: x.group, days: x.days }));
+  (i1.new || []).forEach(x => add(x, 'i1new', { cap: x.cap, stop: x.stop_now, ref: x.ref }));
+  (i1.holding || []).forEach(x => x.status === 'pending' ? add(x, 'i1new', { cap: x.cap, stop: x.stop_now, ref: x.ref }) : add(x, 'i1', { stop: x.stop_now, entry: x.entry, days: x.days }));
+  (po.exits || []).forEach(x => add(x, 'exit', { exit: x.exit, ret: x.ret }));
+  (ext.list || []).forEach(x => add(x, 'ext', { close: x.close }));
+  (ext.opens || []).forEach(x => add(x, 'extopen', { entry: x.entry }));
+  return { file_date: meta.file_date, items: Object.values(items) };
+}
 function closeSummary(items, watch) {
   const byCode = {}; items.forEach(i => byCode[i.code] = i);
   const idx = byCode.TSE01, otc = byCode.OTC01;
@@ -217,7 +241,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (u.pathname === '/') {
-      const st = { ok: true, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
+      const st = { ok: true, ver: 10, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
       if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); const nm = await env.TL.get('night-meta'); if (nm) st.last_night = JSON.parse(nm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
       return json(st);
     }
@@ -326,8 +350,9 @@ export default {
     try { const fd = (await taifex('0')).near; if (fd && fd.last != null && fd.time && fd.date === d) { const arr = cur.FUT = cur.FUT || []; if (!arr.length || arr[arr.length - 1][0] !== fd.time) { arr.push([fd.time, fd.last, fd.vol]); changed++; } } } catch (e) {} // 台指期日盤分時
     if (changed) await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 });
     if (!items.some(it => it.date === d)) return; // 證交所回的還是前一個交易日的報價（臨時休市）：不判斷提醒
-    // 2) 警示推播（名單來自 app 的 quotes.json）
-    const watch = await appJSON('quotes.json', 60, { items: [] });
+    // 2) 警示推播（名單直接從 app 的 pool_out／pool／i1／ext 組出；app 資料不是今天這一期就不推）
+    const watch = await buildWatch(d);
+    if (!watch) { if (new Date().getUTCMinutes() % 5 === 0) await env.TL.put('tl-meta', JSON.stringify({ at: new Date().toISOString(), date: d, codes: codes.length, changed, stale_app: true }), { expirationTtl: 86400 * 10 }); return; }
     const akey = 'al-' + d;
     const state = JSON.parse((await env.TL.get(akey)) || '{}');
     const alerts = alertsFor(items, watch, state);
