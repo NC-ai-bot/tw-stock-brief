@@ -4,7 +4,8 @@
 用法：FINMIND_TOKEN=... python3 tools/export_kl.py <docs_dir> [--codes all|watch|2330,2454,...] [--since 2016-01-01]
 - 寫 docs/data/kl/CODE.json：{"code","name","adj":false,"bars":[[date,o,h,l,c,v張],...]}，另寫 kl/index.json。
 - all：pipeline/universe.csv 全部 ＋ TSE01（TAIEX）、OTC01（TPEx）、0050。
-- watch：docs/data/k/index.json 列出的代號（晨報目前用到的）。
+- watch：docs/data/k/index.json 列出的代號（晨報目前用到的）＋ etf_list.json 的 ETF。
+- etf：只有 docs/data/etf_list.json（規模前 50 大 ETF，app 查價用，不進晨報股票池）。
 - 已存在的檔案只補最後日期之後的資料（增量），--full 強制整檔重抓。
 """
 import csv, json, os, sys, time, urllib.request, urllib.parse
@@ -22,6 +23,14 @@ def universe(root):
         for r in csv.DictReader(f):
             out.append((r['code'], r['name']))
     return out
+
+
+def etfs(docs):
+    """規模前 50 大 ETF（docs/data/etf_list.json）：只給 app 查價／K 線用，不進晨報股票池。"""
+    p = os.path.join(docs, 'data', 'etf_list.json')
+    if not os.path.exists(p):
+        return []
+    return [(x['code'], x['name']) for x in json.load(open(p, encoding='utf-8')).get('items', [])]
 
 
 def fetch(code, start, token):
@@ -62,13 +71,16 @@ def main():
     for i, a in enumerate(args):
         if a == '--codes': which = args[i + 1]
         if a == '--since': since = args[i + 1]
-    uni = universe(root)
-    names = dict(uni); names.update(NAMES)
+    uni = universe(root); etf = etfs(docs)
+    names = dict(uni); names.update(dict(etf)); names.update(NAMES)
     if which == 'all':
-        codes = ['TSE01', 'OTC01', '0050'] + [c for c, _ in uni]
+        codes = ['TSE01', 'OTC01', '0050'] + [c for c, _ in uni] + [c for c, _ in etf]
     elif which == 'watch':
         p = os.path.join(docs, 'data', 'k', 'index.json')
-        codes = ['TSE01', 'OTC01', '0050'] + [x['code'] for x in (json.load(open(p, encoding='utf-8'))['items'] if os.path.exists(p) else [])]
+        codes = ['TSE01', 'OTC01', '0050'] + [x['code'] for x in (json.load(open(p, encoding='utf-8'))['items'] if os.path.exists(p) else [])] + [c for c, _ in etf]
+    elif which == 'etf':
+        codes = [c for c, _ in etf]
+    if which in ('all', 'watch', 'etf'):
         codes = list(dict.fromkeys(codes))
     else:
         codes = which.split(',')

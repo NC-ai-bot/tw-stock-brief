@@ -520,7 +520,7 @@
   }
   function fmtD8(d) { return d && d.length === 8 ? `${+d.slice(4, 6)}/${+d.slice(6)}` : (d || ''); }
   function searchBox() {
-    return `<section class="sec plain"><h2>查任一檔 K 線</h2><div class="body"><div class="search"><input id="ksearch" type="search" inputmode="search" placeholder="輸入代號或名稱，例如 2330 或 台積電" autocomplete="off"><div id="kresult" class="kresult" hidden></div></div><p class="note">涵蓋晨報股票池（台灣50、中型100、櫃買權值）與加權、櫃買指數，2016 年起的日／週／月／年 K。</p></div></section>`;
+    return `<section class="sec plain"><h2>查任一檔 K 線</h2><div class="body"><div class="search"><input id="ksearch" type="search" inputmode="search" placeholder="輸入代號或名稱，例如 2330、台積電 或 0056" autocomplete="off"><div id="kresult" class="kresult" hidden></div></div><p class="note">涵蓋晨報股票池（台灣50、中型100、櫃買權值）、規模前 50 大 ETF（含債券與主動式，只供查價，不會被晨報選入）與加權、櫃買指數，2016 年起的日／週／月／年 K。</p></div></section>`;
   }
   // 自動更新：交易時段每 60 秒重抓 quotes.json
   setInterval(() => {
@@ -541,7 +541,7 @@
     if (!q) { box.hidden = true; return; }
     const list = (await klIndex()).filter(x => x.code.toLowerCase().includes(q) || (x.name || '').toLowerCase().includes(q)).slice(0, 8);
     box.hidden = false;
-    box.innerHTML = list.length ? list.map(x => `<button type="button" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}</button>`).join('') : '<p class="empty">找不到，這檔可能不在晨報的股票池裡。</p>';
+    box.innerHTML = list.length ? list.map(x => `<button type="button" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}${/^0\d{2,4}[A-Z]?$/.test(x.code) ? '<i class="tag-etf">ETF</i>' : ''}</button>`).join('') : '<p class="empty">找不到，這檔不在晨報股票池與前 50 大 ETF 裡。</p>';
   });
 
   // ---------- 持股 ----------
