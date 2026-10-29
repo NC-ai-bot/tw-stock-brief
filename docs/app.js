@@ -532,7 +532,7 @@
   let KL = null;
   async function klIndex() {
     if (KL) return KL;
-    try { const r = await fetch('data/kl/index.json'); KL = r.ok ? (await r.json()).items : []; } catch (e) { KL = []; }
+    try { const r = await fetch(`data/kl/index.json?t=${Math.floor(Date.now() / 300000)}`); KL = r.ok ? (await r.json()).items : []; } catch (e) { KL = []; } // 帶 5 分鐘一變的 query，避免瀏覽器 HTTP 快取拿到舊清單（10/29 加 ETF 後搜不到）
     return KL;
   }
   document.addEventListener('input', async e => {
@@ -691,7 +691,7 @@
     const vol = code === 'TSE01' || code === 'OTC01' ? (src.vol || 0) : (src.vol || 0);
     return [d, o, h, l, src.last, vol, true];
   }
-  async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json(); }
+  async function getJSON(url) { const r = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Math.floor(Date.now() / 300000)); if (!r.ok) throw new Error(r.status); return r.json(); }
   async function series(code) {
     // 日K：優先用 k/（還原價）；週／月／年：用 kl/（未還原、2016 起），尾端接上 k/ 更新的幾天
     const p = K.period;
