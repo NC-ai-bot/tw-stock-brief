@@ -1,16 +1,37 @@
 {
- "date": "2026-10-29",
+ "date": "2026-10-30",
  "bull": false,
  "max_new": 0,
- "room": 7,
+ "room": 8,
  "new": [],
- "filled": [
-  "1303",
-  "2412",
-  "6213"
- ],
+ "filled": [],
  "unfilled": [],
- "exits": [],
+ "exits": [
+  {
+   "code": "6213",
+   "name": "聯茂",
+   "entry_date": "2026-10-28",
+   "ref": 778.0,
+   "cap": 808.01,
+   "w": 0.0519,
+   "equity_at": 1.0,
+   "score": 4.39,
+   "atr_pct": 7.71,
+   "status": "filled",
+   "entry": 773.0,
+   "days": 1,
+   "stop_now": 587.6,
+   "fill_date": "2026-10-29",
+   "shares": 6.704546926192918e-05,
+   "hi": 773.0,
+   "last": 687.0,
+   "ret": -11.64,
+   "stop_dist": 16.92,
+   "exit_date": "2026-10-30",
+   "exit": 687.0,
+   "why": "hard"
+  }
+ ],
  "holding": [
   {
    "code": "1303",
@@ -24,14 +45,14 @@
    "atr_pct": 6.59,
    "status": "filled",
    "entry": 318.0,
-   "days": 0,
-   "stop_now": 255.91,
+   "days": 1,
+   "stop_now": 254.99,
    "fill_date": "2026-10-29",
    "shares": 0.00019060888548284104,
    "hi": 318.0,
-   "last": 312.0,
-   "ret": -1.89,
-   "stop_dist": 21.92
+   "last": 296.0,
+   "ret": -6.92,
+   "stop_dist": 16.08
   },
   {
    "code": "2412",
@@ -45,110 +66,89 @@
    "atr_pct": 1.64,
    "status": "filled",
    "entry": 155.5,
-   "days": 0,
-   "stop_now": 150.1,
+   "days": 1,
+   "stop_now": 152.24,
    "fill_date": "2026-10-29",
    "shares": 0.0009632575830245758,
-   "hi": 158.0,
-   "last": 158.0,
-   "ret": 1.61,
-   "stop_dist": 5.26
-  },
-  {
-   "code": "6213",
-   "name": "聯茂",
-   "entry_date": "2026-10-28",
-   "ref": 778.0,
-   "cap": 808.01,
-   "w": 0.0519,
-   "equity_at": 1.0,
-   "score": 4.39,
-   "atr_pct": 7.71,
-   "status": "filled",
-   "entry": 773.0,
-   "days": 0,
-   "stop_now": 590.19,
-   "fill_date": "2026-10-29",
-   "shares": 6.704546926192918e-05,
-   "hi": 773.0,
-   "last": 745.0,
-   "ret": -3.62,
-   "stop_dist": 26.23
+   "hi": 160.0,
+   "last": 160.0,
+   "ret": 2.89,
+   "stop_dist": 5.1
   }
  ],
  "stats": {
   "start": "2026-10-22",
-  "closed": 0,
-  "avg": null,
-  "hit": null,
-  "cum": -0.1,
-  "open": 3,
-  "bench": 0.33
+  "closed": 1,
+  "avg": -11.64,
+  "hit": 0,
+  "cum": -0.62,
+  "open": 2,
+  "bench": -1.82
  },
  "top": [
   {
    "code": "2892",
    "name": "第一金",
-   "score": 4.57,
-   "close": 44.45,
-   "adx": 47.1,
-   "ret120": 62.6
+   "score": 5.01,
+   "close": 44.6,
+   "adx": 48.5,
+   "ret120": 60.8
   },
   {
    "code": "2801",
    "name": "彰銀",
-   "score": 4.55,
-   "close": 30.5,
-   "adx": 51.2,
-   "ret120": 55.2
+   "score": 4.93,
+   "close": 30.7,
+   "adx": 52.1,
+   "ret120": 55.5
   },
   {
    "code": "1101",
    "name": "台泥",
-   "score": 4.48,
-   "close": 28.2,
-   "adx": 54.2,
-   "ret120": 21.0
+   "score": 4.59,
+   "close": 28.35,
+   "adx": 54.8,
+   "ret120": 17.1
   },
   {
    "code": "5876",
    "name": "上海商銀",
-   "score": 4.46,
+   "score": 4.43,
    "close": 54.5,
-   "adx": 48.8,
+   "adx": 47.8,
    "ret120": 49.1
-  },
-  {
-   "code": "3045",
-   "name": "台灣大",
-   "score": 4.1,
-   "close": 134.5,
-   "adx": 45.1,
-   "ret120": 27.0
-  },
-  {
-   "code": "4938",
-   "name": "和碩",
-   "score": 3.72,
-   "close": 104.5,
-   "adx": 42.6,
-   "ret120": 34.0
   },
   {
    "code": "5880",
    "name": "合庫金",
-   "score": 3.58,
-   "close": 28.9,
-   "adx": 38.1,
-   "ret120": 33.4
+   "score": 3.86,
+   "close": 29.0,
+   "adx": 38.5,
+   "ret120": 33.6
+  },
+  {
+   "code": "3045",
+   "name": "台灣大",
+   "score": 3.84,
+   "close": 133.5,
+   "adx": 46.0,
+   "ret120": 26.7
   },
   {
    "code": "2886",
    "name": "兆豐金",
-   "score": 3.54,
+   "score": 3.67,
    "close": 54.8,
-   "adx": 40.3,
-   "ret120": 45.4
+   "adx": 40.9,
+   "ret120": 43.7
+  },
+  {
+   "code": "2884",
+   "name": "玉山金",
+   "score": 3.63,
+   "close": 49.05,
+   "adx": 42.3,
+   "ret120": 60.5
   }
  ],
  "params": {
