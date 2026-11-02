@@ -31,7 +31,7 @@ const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\
 const unb64u = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
 const concat = (...parts) => { const n = parts.reduce((a, p) => a + p.byteLength, 0); const out = new Uint8Array(n); let o = 0; parts.forEach(p => { out.set(new Uint8Array(p), o); o += p.byteLength; }); return out; };
 const num = v => { if (v == null || v === '-' || v === '') return null; const n = +v; return isNaN(n) ? null : n; };
-const list = v => (v || '').split('_').filter(Boolean).map(Number);
+const list = v => (v || '').split('_').map(Number).filter(n => isFinite(n)); // 漲停時賣方五檔是 '-'，以前會變成 NaN → 估價 NaN → 分時存成 null（11/2 富喬漲停後分時在 0 與 139 之間跳）
 const tpe = () => new Date(Date.now() + 8 * 3600e3);
 const tpeDate = () => tpe().toISOString().slice(0, 10).replace(/-/g, '');
 const tpeHM = () => { const d = tpe(); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
@@ -241,7 +241,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (u.pathname === '/') {
-      const st = { ok: true, ver: 10, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
+      const st = { ok: true, ver: 11, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
       if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); const nm = await env.TL.get('night-meta'); if (nm) st.last_night = JSON.parse(nm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
       return json(st);
     }
@@ -342,7 +342,7 @@ export default {
     let changed = 0;
     const now = tpe(); const stamp = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:00`; // 這一分鐘的分時時間戳（每分鐘一筆）
     items.forEach(it => {
-      if (!it.code || it.last == null || it.date !== d) return;   // 證交所常回 z='-'（est＝用買賣價估），仍要記一筆，否則熱門股的分時會缺一大半（10/28 台積電只有 27 筆）
+      if (!it.code || !isFinite(it.last) || it.last <= 0 || it.date !== d) return;   // 證交所常回 z='-'（est＝用買賣價估），仍要記一筆，否則熱門股的分時會缺一大半（10/28 台積電只有 27 筆）
       const arr = cur[it.code] = cur[it.code] || [];
       const t = it.est ? stamp : (it.time || stamp);
       if (!arr.length || arr[arr.length - 1][0] < t) { arr.push([t, it.last, it.vol]); changed++; }

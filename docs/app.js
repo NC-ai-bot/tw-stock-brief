@@ -266,7 +266,7 @@
     const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim();
     const isFut = code === 'FUT' || code === 'FUTN';
     const item = isFut ? (FUT.data && FUT.data[code === 'FUT' ? 'day' : 'night'] && FUT.data[code === 'FUT' ? 'day' : 'night'].near) : code === 'TSE01' ? (D.quotes.index || {}).t00 : code === 'OTC01' ? (D.quotes.index || {}).o00 : (D.quotes.items || []).find(i => i.code === code);
-    const ticks = (LIVE.ticks[code] || []).slice();
+    const ticks = (LIVE.ticks[code] || []).filter(t => isFinite(t[1]) && t[1] > 0); // 伺服器舊版在漲停（賣方五檔 '-'）時存過 null 的分時，畫圖時略過
     if (!ticks.length && item && item.last != null && item.time) ticks.push([item.time, item.last]);
     const prev = item && (isFut ? item.ref : item.prev); if (!prev) return;
     const padL = 4, padR = 44, padT = 8, padB = 16, pw = W - padL - padR, ph = H - padT - padB;
