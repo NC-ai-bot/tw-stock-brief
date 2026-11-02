@@ -11,12 +11,12 @@
     "MA10",
     null
    ],
-   "stop_now": 54.21,
-   "days": 9,
-   "last": 54.5,
-   "ret": 2.06,
-   "prev_close": 54.5,
-   "stop_dist": 0.53
+   "stop_now": 54.3,
+   "days": 10,
+   "last": 54.3,
+   "ret": 1.69,
+   "prev_close": 54.3,
+   "stop_dist": 0.0
   },
   {
    "code": "2834",
@@ -29,12 +29,12 @@
     "MA20",
     null
    ],
-   "stop_now": 17.73,
-   "days": 8,
+   "stop_now": 17.75,
+   "days": 9,
    "last": 18.05,
    "ret": 0.0,
    "prev_close": 18.05,
-   "stop_dist": 1.78
+   "stop_dist": 1.69
   },
   {
    "code": "2356",
@@ -48,11 +48,11 @@
     null
    ],
    "stop_now": 59.48,
-   "days": 6,
-   "last": 59.5,
-   "ret": -0.83,
-   "prev_close": 59.5,
-   "stop_dist": 0.03
+   "days": 7,
+   "last": 59.6,
+   "ret": -0.67,
+   "prev_close": 59.6,
+   "stop_dist": 0.19
   },
   {
    "code": "3533",
@@ -66,11 +66,11 @@
     null
    ],
    "stop_now": 1723.28,
-   "days": 3,
-   "last": 1860.0,
-   "ret": -5.46,
-   "prev_close": 1860.0,
-   "stop_dist": 7.93,
+   "days": 4,
+   "last": 1820.0,
+   "ret": -7.5,
+   "prev_close": 1820.0,
+   "stop_dist": 5.61,
    "ref": 1925.0,
    "cap": 1967.5,
    "lot": 1925000,
@@ -90,7 +90,7 @@
     null
    ],
    "stop_now": 107.17,
-   "days": 2,
+   "days": 3,
    "last": 116.0,
    "ret": 0.43,
    "prev_close": 116.0,
@@ -103,28 +103,26 @@
    "fill_how": "開盤"
   },
   {
-   "code": "3167",
-   "name": "大量",
-   "sector": "PCB 設備",
+   "code": "2610",
+   "name": "華航",
+   "sector": "航空運輸",
    "group": "回檔站回",
-   "entry_date": "2026-10-28",
-   "entry": 1015.0,
+   "entry_date": "2026-11-02",
+   "entry": 20.65,
    "stop": [
     "ST",
     null
    ],
-   "stop_now": 901.23,
-   "days": 2,
-   "last": 942.0,
-   "ret": -7.19,
-   "prev_close": 942.0,
-   "stop_dist": 4.52,
-   "ref": 1030.0,
-   "cap": 1064.25,
-   "lot": 1030000,
-   "status": "filled",
-   "fill_date": "2026-10-29",
-   "fill_how": "開盤"
+   "stop_now": 19.92,
+   "days": 0,
+   "last": 20.65,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 3.66,
+   "ref": 20.65,
+   "cap": 20.81,
+   "lot": 20650,
+   "status": "pending"
   }
  ],
  "closed": [
@@ -221,6 +219,20 @@
    "why": "stop",
    "ret": -13.36,
    "fill_date": "2026-10-29"
+  },
+  {
+   "code": "3167",
+   "name": "大量",
+   "sector": "PCB 設備",
+   "group": "回檔站回",
+   "entry_date": "2026-10-28",
+   "entry": 1015.0,
+   "exit_date": "2026-11-02",
+   "exit": 912.0,
+   "days": 3,
+   "why": "hard",
+   "ret": -10.15,
+   "fill_date": "2026-10-29"
   }
  ],
  "start": "2026-10-14",
@@ -284,6 +296,12 @@
    "date": "2026-10-30",
    "eq": 0.929216,
    "n": 6,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-02",
+   "eq": 0.923675,
+   "n": 5,
    "acct": "slot"
   }
  ],
