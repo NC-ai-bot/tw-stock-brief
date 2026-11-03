@@ -336,3 +336,16 @@ canvas.tl{display:block;width:100%;height:120px}
 .sec.my{--c:#c9a227}
 .qrm{margin-left:auto;font:inherit;font-size:.7rem;padding:1px 7px;border:1px solid var(--line);border-radius:8px;background:none;color:var(--muted);cursor:pointer}
 .qrm:active{background:var(--line)}
+/* 技術面評分 */
+.sec.ta .tahead{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.gauge{width:220px;max-width:60%;height:auto;flex:0 0 auto}
+.tasum{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted);min-width:150px;flex:1}
+.tasum b{color:var(--fg);font-size:.95rem}
+.talist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.tarow{display:grid;grid-template-columns:7.5em 1fr auto;gap:2px 8px;align-items:center;font-size:.8rem;cursor:pointer}
+.tarow .tan{font-weight:600}
+.tarow .tav{color:var(--muted);min-width:0}
+.tarow .tag{font-size:.74rem;font-weight:600;white-space:nowrap}
+.tarow .tabar{grid-column:1/4;display:block;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.tarow .tabar b{display:block;height:100%}
+.tanote{font-size:.74rem;color:var(--muted);padding:2px 0 4px 8px;border-left:2px solid var(--line)}

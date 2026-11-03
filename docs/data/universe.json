@@ -1039,5 +1039,255 @@
 "name": "群益25年美債",
 "ex": "otc",
 "etf": true
+},
+"00754B": {
+"name": "群益AAA-AA公司債",
+"ex": "otc",
+"etf": true
+},
+"00756B": {
+"name": "群益投等新興公債",
+"ex": "otc",
+"etf": true
+},
+"00795B": {
+"name": "中信美國公債20年",
+"ex": "otc",
+"etf": true
+},
+"00726B": {
+"name": "國泰新興投等債",
+"ex": "otc",
+"etf": true
+},
+"00850": {
+"name": "元大臺灣ESG永續",
+"ex": "tse",
+"etf": true
+},
+"00768B": {
+"name": "復華20年美債",
+"ex": "otc",
+"etf": true
+},
+"00923": {
+"name": "群益台ESG低碳50",
+"ex": "tse",
+"etf": true
+},
+"00990A": {
+"name": "主動元大AI新經濟",
+"ex": "tse",
+"etf": true
+},
+"00757": {
+"name": "統一FANG+",
+"ex": "tse",
+"etf": true
+},
+"00948B": {
+"name": "中信優息投資級債",
+"ex": "otc",
+"etf": true
+},
+"00785B": {
+"name": "富邦金融投等債",
+"ex": "otc",
+"etf": true
+},
+"00779B": {
+"name": "凱基美債25+",
+"ex": "otc",
+"etf": true
+},
+"00675L": {
+"name": "富邦臺灣加權正2",
+"ex": "tse",
+"etf": true
+},
+"00749B": {
+"name": "凱基新興債10+",
+"ex": "otc",
+"etf": true
+},
+"00405A": {
+"name": "主動富邦台灣龍耀",
+"ex": "tse",
+"etf": true
+},
+"00900": {
+"name": "富邦特選高股息30",
+"ex": "tse",
+"etf": true
+},
+"00882": {
+"name": "中信中國高股息",
+"ex": "tse",
+"etf": true
+},
+"00931B": {
+"name": "統一美債20年",
+"ex": "otc",
+"etf": true
+},
+"00400A": {
+"name": "主動國泰動能高息",
+"ex": "tse",
+"etf": true
+},
+"00406A": {
+"name": "主動中信台灣收益",
+"ex": "tse",
+"etf": true
+},
+"00942B": {
+"name": "台新美A公司債20+",
+"ex": "otc",
+"etf": true
+},
+"00632R": {
+"name": "元大台灣50反1",
+"ex": "tse",
+"etf": true
+},
+"00407A": {
+"name": "主動凱基台灣",
+"ex": "tse",
+"etf": true
+},
+"00862B": {
+"name": "中信投資級公司債",
+"ex": "otc",
+"etf": true
+},
+"00939": {
+"name": "統一台灣高息動能",
+"ex": "tse",
+"etf": true
+},
+"00760B": {
+"name": "復華新興企業債",
+"ex": "otc",
+"etf": true
+},
+"00888": {
+"name": "永豐台灣ESG",
+"ex": "otc",
+"etf": true
+},
+"00789B": {
+"name": "復華公司債A3",
+"ex": "otc",
+"etf": true
+},
+"00980A": {
+"name": "主動野村臺灣優選",
+"ex": "tse",
+"etf": true
+},
+"00849B": {
+"name": "中信EM主權債0-5",
+"ex": "otc",
+"etf": true
+},
+"00836B": {
+"name": "永豐10年A公司債",
+"ex": "otc",
+"etf": true
+},
+"00696B": {
+"name": "富邦美債20年",
+"ex": "otc",
+"etf": true
+},
+"00867B": {
+"name": "台新A-BBB電信債",
+"ex": "otc",
+"etf": true
+},
+"00663L": {
+"name": "國泰臺灣加權正2",
+"ex": "tse",
+"etf": true
+},
+"00915": {
+"name": "凱基優選高股息30",
+"ex": "tse",
+"etf": true
+},
+"00791B": {
+"name": "復華信用債1-5",
+"ex": "otc",
+"etf": true
+},
+"00863B": {
+"name": "中信全球電信債",
+"ex": "otc",
+"etf": true
+},
+"00870B": {
+"name": "元大15年EM主權債",
+"ex": "otc",
+"etf": true
+},
+"00670L": {
+"name": "富邦NASDAQ正2",
+"ex": "tse",
+"etf": true
+},
+"00893": {
+"name": "國泰智能電動車",
+"ex": "tse",
+"etf": true
+},
+"00635U": {
+"name": "期元大S&P黃金",
+"ex": "tse",
+"etf": true
+},
+"00637L": {
+"name": "元大滬深300正2",
+"ex": "tse",
+"etf": true
+},
+"00865B": {
+"name": "國泰US短期公債",
+"ex": "tse",
+"etf": true
+},
+"00924": {
+"name": "復華S&P500成長",
+"ex": "tse",
+"etf": true
+},
+"00981B": {
+"name": "第一金優選非投債",
+"ex": "otc",
+"etf": true
+},
+"00711B": {
+"name": "復華彭博新興債",
+"ex": "tse",
+"etf": true
+},
+"00857B": {
+"name": "永豐20年美公債",
+"ex": "otc",
+"etf": true
+},
+"00997A": {
+"name": "主動群益美國增長",
+"ex": "tse",
+"etf": true
+},
+"00738U": {
+"name": "期元大道瓊白銀",
+"ex": "tse",
+"etf": true
+},
+"00892": {
+"name": "富邦台灣半導體",
+"ex": "tse",
+"etf": true
 }
 }

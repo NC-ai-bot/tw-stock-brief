@@ -311,7 +311,7 @@
     const cards = MY.codes.map(myCard).join('');
     return `<section class="sec my"><h2>我的自選股<span class="cnt">${MY.codes.length ? MY.codes.length + ' 檔' : '尚未加入'}</span></h2>
       ${cards ? `<div class="qgrid">${cards}</div>` : ''}
-      <div class="body"><div class="search"><input id="myadd" type="search" inputmode="search" placeholder="加入自選：輸入代號或名稱（股票池 198 檔與前 50 大 ETF）" autocomplete="off"><div id="myresult" class="kresult" hidden></div></div>
+      <div class="body"><div class="search"><input id="myadd" type="search" inputmode="search" placeholder="加入自選：輸入代號或名稱（股票池 198 檔與前 100 大 ETF）" autocomplete="off"><div id="myresult" class="kresult" hidden></div></div>
       <p class="note">自選股只存在這支手機（不會同步到其他裝置、也不會進晨報）；點卡片看 K 線，「五檔・分時」看即時走勢。最多 30 檔。</p></div></section>`;
   }
   function myRefresh() { const el = $('#tab-live'); const old = el && el.querySelector('.sec.my'); if (!old) { renderLive(); return; } const t = document.createElement('div'); t.innerHTML = mySection(); const nu = t.firstElementChild; const inp = old.querySelector('#myadd'); const v = inp ? inp.value : ''; old.replaceWith(nu); if (v) { nu.querySelector('#myadd').value = v; } drawAllTL(nu); livePoll(true); loadServerTicks(); }
@@ -321,7 +321,7 @@
     if (!q) { box.hidden = true; return; }
     const list = (await klIndex()).filter(x => !['TSE01', 'OTC01'].includes(x.code) && (x.code.toLowerCase().includes(q) || (x.name || '').toLowerCase().includes(q))).slice(0, 8);
     box.hidden = false;
-    box.innerHTML = list.length ? list.map(x => `<button type="button" data-myadd="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}${MY.codes.includes(x.code) ? '<i class="tag-etf">已加入</i>' : ''}</button>`).join('') : '<p class="empty">找不到，這檔不在晨報股票池與前 50 大 ETF 裡。</p>';
+    box.innerHTML = list.length ? list.map(x => `<button type="button" data-myadd="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}${MY.codes.includes(x.code) ? '<i class="tag-etf">已加入</i>' : ''}</button>`).join('') : '<p class="empty">找不到，這檔不在晨報股票池與前 100 大 ETF 裡。</p>';
   });
   document.addEventListener('click', e => {
     const a = e.target.closest('[data-myadd]'); const r = e.target.closest('[data-rm]');
@@ -581,7 +581,7 @@
   }
   function fmtD8(d) { return d && d.length === 8 ? `${+d.slice(4, 6)}/${+d.slice(6)}` : (d || ''); }
   function searchBox() {
-    return `<section class="sec plain"><h2>查任一檔 K 線</h2><div class="body"><div class="search"><input id="ksearch" type="search" inputmode="search" placeholder="輸入代號或名稱，例如 2330、台積電 或 0056" autocomplete="off"><div id="kresult" class="kresult" hidden></div></div><p class="note">涵蓋晨報股票池（台灣50、中型100、櫃買權值）、規模前 50 大 ETF（含債券與主動式，只供查價，不會被晨報選入）與加權、櫃買指數，2016 年起的日／週／月／年 K。</p></div></section>`;
+    return `<section class="sec plain"><h2>查任一檔 K 線</h2><div class="body"><div class="search"><input id="ksearch" type="search" inputmode="search" placeholder="輸入代號或名稱，例如 2330、台積電 或 0056" autocomplete="off"><div id="kresult" class="kresult" hidden></div></div><p class="note">涵蓋晨報股票池（台灣50、中型100、櫃買權值）、規模前 100 大 ETF（含債券、槓桿與主動式，只供查價，不會被晨報選入）與加權、櫃買指數，2016 年起的日／週／月／年 K。</p></div></section>`;
   }
   // 自動更新：交易時段每 60 秒重抓 quotes.json
   setInterval(() => {
@@ -602,7 +602,7 @@
     if (!q) { box.hidden = true; return; }
     const list = (await klIndex()).filter(x => x.code.toLowerCase().includes(q) || (x.name || '').toLowerCase().includes(q)).slice(0, 8);
     box.hidden = false;
-    box.innerHTML = list.length ? list.map(x => `<button type="button" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}${/^0\d{2,4}[A-Z]?$/.test(x.code) ? '<i class="tag-etf">ETF</i>' : ''}</button>`).join('') : '<p class="empty">找不到，這檔不在晨報股票池與前 50 大 ETF 裡。</p>';
+    box.innerHTML = list.length ? list.map(x => `<button type="button" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}${/^0\d{2,4}[A-Z]?$/.test(x.code) ? '<i class="tag-etf">ETF</i>' : ''}</button>`).join('') : '<p class="empty">找不到，這檔不在晨報股票池與前 100 大 ETF 裡。</p>';
   });
 
   // ---------- 持股 ----------
@@ -836,6 +836,102 @@
     K.series = s;
     drawChart();
     if (LIVE.tlLoaded && !LIVE.tlLoaded.has(code)) loadServerTicks();
+    renderTA(code);
+  }
+
+  // ---------- K 線頁：技術面評分（日K，還原價；每項指標 0–100，越高越偏多） ----------
+  async function taBars(code) {
+    const k = K.cache[code], kl = K.cacheL[code];
+    let base;
+    if (kl) { base = adjustBars(kl.bars, ((await divs())[code] || []), code); if (k) { const lastD = base[base.length - 1][0]; k.bars.forEach(b => { if (b[0] > lastD) base.push(b.slice()); }); } }
+    else if (k) base = k.bars.slice();
+    else return null;
+    const lb = liveBar(code, base); if (lb) base.push(lb);
+    return base.slice(-400);
+  }
+  const TA = {
+    sma: (a, n) => a.map((_, i) => i + 1 < n ? null : a.slice(i + 1 - n, i + 1).reduce((x, y) => x + y, 0) / n),
+    ema: (a, n) => { const k = 2 / (n + 1); let e = null; return a.map(v => (e = e == null ? v : v * k + e * (1 - k))); },
+    clamp: v => Math.max(0, Math.min(100, Math.round(v))),
+    lin: (v, lo, hi) => TA.clamp((v - lo) / (hi - lo) * 100), // v 在 lo..hi 之間線性對應 0..100
+  };
+  function computeTA(bars) {
+    if (!bars || bars.length < 60) return null;
+    const c = bars.map(b => b[4]), h = bars.map(b => b[2]), l = bars.map(b => b[3]), v = bars.map(b => b[5] || 0), n = c.length, i = n - 1;
+    const last = c[i], items = [];
+    const add = (name, val, score, w, note) => items.push({ name, val, score: TA.clamp(score), w, note });
+    // 1. 均線
+    const m5 = TA.sma(c, 5), m10 = TA.sma(c, 10), m20 = TA.sma(c, 20), m60 = TA.sma(c, 60), m120 = TA.sma(c, 120);
+    const mas = [m5[i], m10[i], m20[i], m60[i], m120[i]].filter(x => x != null);
+    const above = mas.filter(m => last > m).length;
+    const aligned = m5[i] > m10[i] && m10[i] > m20[i] && m20[i] > m60[i];
+    const alignedBear = m5[i] < m10[i] && m10[i] < m20[i] && m20[i] < m60[i];
+    add('均線位置', `站上 ${above}／${mas.length} 條（5/10/20/60/120 日）${aligned ? '，多頭排列' : alignedBear ? '，空頭排列' : ''}`, above / mas.length * 100 * 0.8 + (aligned ? 20 : alignedBear ? 0 : 10), 1.5, '收盤在越多條均線之上越偏多；短中長均線由上而下排列為多頭排列');
+    // 2. 月線與季線方向
+    const slope = (m, k) => m[i] != null && m[i - k] != null ? (m[i] / m[i - k] - 1) * 100 : null;
+    const s20 = slope(m20, 5), s60 = slope(m60, 10);
+    if (s20 != null) add('月線／季線方向', `月線 5 日 ${s20 >= 0 ? '+' : ''}${s20.toFixed(1)}%${s60 != null ? `，季線 10 日 ${s60 >= 0 ? '+' : ''}${s60.toFixed(1)}%` : ''}`, (TA.lin(s20, -3, 3) + (s60 != null ? TA.lin(s60, -3, 3) : 50)) / 2, 1, '均線向上為多方趨勢');
+    // 3. 乖離
+    if (m20[i]) { const bias = (last / m20[i] - 1) * 100; add('月線乖離', `${bias >= 0 ? '+' : ''}${bias.toFixed(1)}%`, bias > 12 ? 60 : bias < -12 ? 40 : TA.lin(bias, -8, 8), 0.7, '正乖離偏多，但超過約 +12% 視為過熱、不再加分；負乖離過大視為超跌'); }
+    // 4. MACD
+    const e12 = TA.ema(c, 12), e26 = TA.ema(c, 26), dif = e12.map((x, j) => x - e26[j]), dea = TA.ema(dif, 9), hist = dif.map((x, j) => x - dea[j]);
+    const hs = hist[i] / last * 100, hRise = hist[i] > hist[i - 1];
+    add('MACD', `DIF ${dif[i].toFixed(2)}／MACD ${dea[i].toFixed(2)}，柱 ${hist[i] >= 0 ? '+' : ''}${hist[i].toFixed(2)}${hRise ? '（放大）' : '（縮小）'}`, 50 + (dif[i] > dea[i] ? 20 : -20) + (dif[i] > 0 ? 10 : -10) + (hRise ? 10 : -10) + TA.lin(hs, -2, 2) / 10 - 5, 1.2, 'DIF 在 MACD 之上且在零軸上方偏多；紅柱放大為動能增強');
+    // 5. KD
+    let kk = 50, dd = 50; const kArr = [], dArr = [];
+    for (let j = 0; j < n; j++) { if (j < 8) { kArr.push(null); dArr.push(null); continue; } const hh = Math.max(...h.slice(j - 8, j + 1)), ll = Math.min(...l.slice(j - 8, j + 1)); const rsv = hh === ll ? 50 : (c[j] - ll) / (hh - ll) * 100; kk = kk * 2 / 3 + rsv / 3; dd = dd * 2 / 3 + kk / 3; kArr.push(kk); dArr.push(dd); }
+    const kv = kArr[i], dv = dArr[i], kx = kArr[i] > dArr[i] && kArr[i - 1] <= dArr[i - 1], dx = kArr[i] < dArr[i] && kArr[i - 1] >= dArr[i - 1];
+    add('KD（9,3,3）', `K ${kv.toFixed(0)}／D ${dv.toFixed(0)}${kx ? '，黃金交叉' : dx ? '，死亡交叉' : kv > dv ? '，K 在 D 上' : '，K 在 D 下'}${kv > 80 ? '，高檔' : kv < 20 ? '，低檔' : ''}`, kv * 0.6 + (kv > dv ? 25 : 5) + (kx ? 10 : dx ? -10 : 0) + (kv > 85 ? -10 : 0), 1, 'K 在 D 之上偏多；80 以上為高檔鈍化風險，20 以下為低檔');
+    // 6. RSI
+    let g = 0, lo = 0; for (let j = i - 13; j <= i; j++) { const d = c[j] - c[j - 1]; if (d > 0) g += d; else lo -= d; } const rsi = g + lo === 0 ? 50 : g / (g + lo) * 100;
+    add('RSI（14）', `${rsi.toFixed(0)}${rsi > 70 ? '，超買' : rsi < 30 ? '，超賣' : ''}`, rsi > 80 ? 70 : rsi, 1, '50 以上偏多；70 以上超買、30 以下超賣');
+    // 7. 布林
+    if (m20[i]) { const sd = Math.sqrt(c.slice(i - 19, i + 1).reduce((a, x) => a + (x - m20[i]) ** 2, 0) / 20); const pb = sd ? (last - (m20[i] - 2 * sd)) / (4 * sd) : .5; const bw = m20[i] ? 4 * sd / m20[i] * 100 : 0; add('布林通道 %B', `${(pb * 100).toFixed(0)}%（帶寬 ${bw.toFixed(1)}%）${pb > 1 ? '，突破上軌' : pb < 0 ? '，跌破下軌' : ''}`, TA.lin(pb, -0.1, 1.1), 0.8, '%B 50% 以上在中軌之上偏多；帶寬越窄代表盤整、之後易有大波動'); }
+    // 8. 威廉 %R
+    { const hh = Math.max(...h.slice(i - 13, i + 1)), ll = Math.min(...l.slice(i - 13, i + 1)); const wr = hh === ll ? -50 : (hh - last) / (hh - ll) * -100; add('威廉 %R（14）', `${wr.toFixed(0)}${wr > -20 ? '，強勢區' : wr < -80 ? '，超賣區' : ''}`, 100 + wr, 0.7, '−20 以上為強勢、−80 以下為超賣（晨報 W4 用的就是 %R 回檔後站回 −50）'); }
+    // 9. DMI / ADX
+    { const tr = [], pdm = [], mdm = []; for (let j = 1; j < n; j++) { tr.push(Math.max(h[j] - l[j], Math.abs(h[j] - c[j - 1]), Math.abs(l[j] - c[j - 1]))); const up = h[j] - h[j - 1], dn = l[j - 1] - l[j]; pdm.push(up > dn && up > 0 ? up : 0); mdm.push(dn > up && dn > 0 ? dn : 0); }
+      const w = (a) => { let s = a.slice(0, 14).reduce((x, y) => x + y, 0); const out = [s]; for (let j = 14; j < a.length; j++) { s = s - s / 14 + a[j]; out.push(s); } return out; };
+      const tr14 = w(tr), p14 = w(pdm), m14 = w(mdm); const pdi = p14.map((x, j) => x / tr14[j] * 100), mdi = m14.map((x, j) => x / tr14[j] * 100); const dx = pdi.map((x, j) => (x + mdi[j]) ? Math.abs(x - mdi[j]) / (x + mdi[j]) * 100 : 0);
+      let adx = dx.slice(0, 14).reduce((x, y) => x + y, 0) / 14; for (let j = 14; j < dx.length; j++) adx = (adx * 13 + dx[j]) / 14;
+      const P = pdi[pdi.length - 1], M = mdi[mdi.length - 1]; const dir = P > M ? 1 : -1;
+      add('DMI／ADX（14）', `+DI ${P.toFixed(0)}／−DI ${M.toFixed(0)}，ADX ${adx.toFixed(0)}${adx > 25 ? '（趨勢明確）' : '（趨勢弱）'}`, 50 + dir * Math.min(50, adx) * 0.8 + dir * Math.min(10, Math.abs(P - M) / 2), 1, '+DI 大於 −DI 為多方；ADX 越高趨勢越強（不分方向）'); }
+    // 10. 超級趨勢線（ATR10×3，晨報的出場線）
+    { const tr = c.map((_, j) => j ? Math.max(h[j] - l[j], Math.abs(h[j] - c[j - 1]), Math.abs(l[j] - c[j - 1])) : h[j] - l[j]); const atr = TA.sma(tr, 10);
+      let st = null, dirU = true, prevU = null, prevL = null;
+      for (let j = 10; j < n; j++) { const mid = (h[j] + l[j]) / 2; let up = mid + 3 * atr[j], lw = mid - 3 * atr[j]; if (prevL != null && c[j - 1] > prevL) lw = Math.max(lw, prevL); if (prevU != null && c[j - 1] < prevU) up = Math.min(up, prevU); if (dirU && c[j] < lw) dirU = false; else if (!dirU && c[j] > up) dirU = true; st = dirU ? lw : up; prevU = up; prevL = lw; }
+      const d = (last / st - 1) * 100; add('超級趨勢線（ATR10×3）', `${dirU ? '多方' : '空方'}，線在 ${fmtP(st)}（距 ${d >= 0 ? '+' : ''}${d.toFixed(1)}%）`, dirU ? 60 + TA.lin(d, 0, 15) * 0.4 : 40 - TA.lin(-d, 0, 15) * 0.4, 1.3, '收盤在線上為多方（晨報用它當出場線）；距離越遠越不容易被洗出'); }
+    // 11. 20 日區間位置
+    { const hh = Math.max(...h.slice(i - 19, i + 1)), ll = Math.min(...l.slice(i - 19, i + 1)); const pos = hh === ll ? .5 : (last - ll) / (hh - ll); const nh = last >= Math.max(...c.slice(i - 59, i)); add('20 日區間位置', `${(pos * 100).toFixed(0)}%${nh ? '，創 60 日新高' : ''}`, pos * 100 * 0.9 + (nh ? 10 : 0), 0.8, '在近 20 日高低區間的位置；接近高點偏多'); }
+    // 12. 量能
+    { const v5 = TA.sma(v, 5)[i], v20 = TA.sma(v, 20)[i]; if (v20) { const r = v5 / v20; const upDay = last > c[i - 1]; const pv = upDay && v[i] > v20 ? '價漲量增' : !upDay && v[i] > v20 * 1.3 ? '價跌量增' : upDay && v[i] < v20 * .7 ? '價漲量縮' : ''; add('量能', `5 日均量／20 日均量 ${r.toFixed(2)}${pv ? '，' + pv : ''}`, TA.lin(r, 0.5, 1.6) * 0.7 + (pv === '價漲量增' ? 30 : pv === '價跌量增' ? 0 : 15), 0.8, '量能放大配合上漲偏多；價跌量增偏空'); } }
+    const W = items.reduce((a, x) => a + x.w, 0), score = TA.clamp(items.reduce((a, x) => a + x.score * x.w, 0) / W);
+    return { score, items, date: bars[i][0] };
+  }
+  function taLabel(s) { return s >= 80 ? '強烈偏多' : s >= 60 ? '偏多' : s > 40 ? '中性' : s > 20 ? '偏空' : '強烈偏空'; }
+  function taColor(s) { return s >= 60 ? 'var(--up)' : s > 40 ? 'var(--strong)' : 'var(--down)'; }
+  function gaugeSVG(score) {
+    const W = 260, H = 150, cx = 130, cy = 130, r = 105; const a = Math.PI * (1 - score / 100); const nx = cx + Math.cos(a) * (r - 12), ny = cy - Math.sin(a) * (r - 12);
+    const arc = (s0, s1, col) => { const a0 = Math.PI * (1 - s0 / 100), a1 = Math.PI * (1 - s1 / 100); const x0 = cx + Math.cos(a0) * r, y0 = cy - Math.sin(a0) * r, x1 = cx + Math.cos(a1) * r, y1 = cy - Math.sin(a1) * r; return `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" stroke="${col}" stroke-width="16" fill="none" stroke-linecap="butt"/>`; };
+    return `<svg class="gauge" viewBox="0 0 ${W} ${H}" aria-label="多空分數 ${score}">
+      ${arc(0, 20, 'var(--down)')}${arc(20.5, 40, 'color-mix(in srgb,var(--down) 55%,transparent)')}${arc(40.5, 60, 'color-mix(in srgb,var(--strong) 70%,transparent)')}${arc(60.5, 80, 'color-mix(in srgb,var(--up) 55%,transparent)')}${arc(80.5, 100, 'var(--up)')}
+      <text x="18" y="${cy + 16}" font-size="11" fill="var(--muted)">空</text><text x="${W - 18}" y="${cy + 16}" font-size="11" fill="var(--muted)" text-anchor="end">多</text>
+      <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--fg)" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="6" fill="var(--fg)"/>
+      <text x="${cx}" y="${cy - 42}" font-size="30" font-weight="700" text-anchor="middle" fill="${taColor(score)}">${score}</text>
+      <text x="${cx}" y="${cy - 22}" font-size="13" text-anchor="middle" fill="${taColor(score)}">${taLabel(score)}</text></svg>`;
+  }
+  async function renderTA(code) {
+    const el = $('#cta'); if (!el) return; el.innerHTML = '';
+    if (code === 'FUT' || code === 'FUTN') return;
+    const bars = await taBars(code); if (K.code !== code) return;
+    const t = bars && computeTA(bars);
+    if (!t) { el.innerHTML = '<p class="note">資料不足 60 根日K，無法評分。</p>'; return; }
+    const d = fmtD8(t.date.replace(/-/g, ''));
+    el.innerHTML = `<section class="sec plain ta"><h2>技術面評分<span class="cnt">日K・還原價・資料到 ${esc(d)}</span></h2>
+      <div class="body"><div class="tahead">${gaugeSVG(t.score)}<div class="tasum"><b>${t.score} 分（0 最空、100 最多）</b><span>${taLabel(t.score)}：${t.items.filter(x => x.score >= 60).length} 項偏多、${t.items.filter(x => x.score <= 40).length} 項偏空、${t.items.filter(x => x.score > 40 && x.score < 60).length} 項中性（共 ${t.items.length} 項，依權重加總）</span></div></div>
+      <div class="talist">${t.items.map(x => `<div class="tarow" title="${esc(x.note)}"><span class="tan">${esc(x.name)}</span><span class="tav">${esc(x.val)}</span><span class="tag" style="color:${taColor(x.score)}">${taLabel(x.score)}</span><i class="tabar"><b style="width:${x.score}%;background:${taColor(x.score)}"></b></i></div>`).join('')}</div>
+      <p class="note">各指標依常用規則換算成 0–100 的多空百分等級（50 為中性），加權平均成總分；只是技術面整理，不是買賣建議，也不代表晨報的選股結果。點各列可看計算說明。</p></div></section>`;
+    el.querySelectorAll('.tarow').forEach(r => r.addEventListener('click', () => { const n = r.nextElementSibling; if (n && n.classList.contains('tanote')) { n.remove(); return; } const p = document.createElement('div'); p.className = 'tanote'; p.textContent = r.title; r.after(p); }));
   }
   function closeChart() { $('#chart').hidden = true; document.body.classList.remove('vopen'); K.code = null; K.series = null; }
   $('#cclose').addEventListener('click', closeChart);
