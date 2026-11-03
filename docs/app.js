@@ -291,14 +291,53 @@
     ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx, y(last), 2.5, 0, Math.PI * 2); ctx.fill();
   }
   function drawAllTL(root) { (root || document).querySelectorAll('canvas.tl').forEach(drawTL); }
+  // ---------- 自選股（存在這支手機的 localStorage，每個使用者各自一份，不經過伺服器） ----------
+  const MY = { codes: [] };
+  function myLoad() { try { const a = JSON.parse(localStorage.getItem('my-watch') || '[]'); MY.codes = Array.isArray(a) ? a.filter(c => typeof c === 'string').slice(0, 30) : []; } catch (e) { MY.codes = []; } }
+  function mySave() { try { localStorage.setItem('my-watch', JSON.stringify(MY.codes)); } catch (e) {} }
+  myLoad();
+  function myItem(code) {
+    const q = D.quotes || {}; const x = (q.items || []).find(i => i.code === code);
+    if (x) return x;
+    const k = (KL || []).find(i => i.code === code); return { code, name: k ? k.name : code, kinds: [], placeholder: true };
+  }
+  function myCard(code) {
+    const x = myItem(code);
+    const flag = `<button type="button" class="qrm" data-rm="${esc(code)}" title="從自選股移除">移除</button>`;
+    const ctx = x.placeholder ? '等待報價…（開盤後每 3 秒更新；非交易時段顯示最近收盤）' : '';
+    return quoteCard(x, { ctx, flag });
+  }
+  function mySection() {
+    const cards = MY.codes.map(myCard).join('');
+    return `<section class="sec my"><h2>我的自選股<span class="cnt">${MY.codes.length ? MY.codes.length + ' 檔' : '尚未加入'}</span></h2>
+      ${cards ? `<div class="qgrid">${cards}</div>` : ''}
+      <div class="body"><div class="search"><input id="myadd" type="search" inputmode="search" placeholder="加入自選：輸入代號或名稱（股票池 198 檔與前 50 大 ETF）" autocomplete="off"><div id="myresult" class="kresult" hidden></div></div>
+      <p class="note">自選股只存在這支手機（不會同步到其他裝置、也不會進晨報）；點卡片看 K 線，「五檔・分時」看即時走勢。最多 30 檔。</p></div></section>`;
+  }
+  function myRefresh() { const el = $('#tab-live'); const old = el && el.querySelector('.sec.my'); if (!old) { renderLive(); return; } const t = document.createElement('div'); t.innerHTML = mySection(); const nu = t.firstElementChild; const inp = old.querySelector('#myadd'); const v = inp ? inp.value : ''; old.replaceWith(nu); if (v) { nu.querySelector('#myadd').value = v; } drawAllTL(nu); livePoll(true); loadServerTicks(); }
+  document.addEventListener('input', async e => {
+    if (e.target.id !== 'myadd') return;
+    const q = e.target.value.trim().toLowerCase(), box = $('#myresult');
+    if (!q) { box.hidden = true; return; }
+    const list = (await klIndex()).filter(x => !['TSE01', 'OTC01'].includes(x.code) && (x.code.toLowerCase().includes(q) || (x.name || '').toLowerCase().includes(q))).slice(0, 8);
+    box.hidden = false;
+    box.innerHTML = list.length ? list.map(x => `<button type="button" data-myadd="${esc(x.code)}"><span class="code">${esc(x.code)}</span>${esc(x.name)}${MY.codes.includes(x.code) ? '<i class="tag-etf">已加入</i>' : ''}</button>`).join('') : '<p class="empty">找不到，這檔不在晨報股票池與前 50 大 ETF 裡。</p>';
+  });
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-myadd]'); const r = e.target.closest('[data-rm]');
+    if (!a && !r) return;
+    e.preventDefault(); e.stopPropagation();
+    if (a) { const c = a.dataset.myadd; if (!MY.codes.includes(c)) { if (MY.codes.length >= 30) { alert('自選股最多 30 檔'); return; } MY.codes.push(c); mySave(); } const inp = $('#myadd'); if (inp) inp.value = ''; const box = $('#myresult'); if (box) box.hidden = true; myRefresh(); }
+    if (r) { MY.codes = MY.codes.filter(c => c !== r.dataset.rm); mySave(); myRefresh(); }
+  }, true);
   function renderLive() {
     const el = $('#tab-live');
     const q = D.quotes;
     const phase = marketPhase();
     let h = '';
     if (!q || !q.items) {
-      el.innerHTML = '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">還沒有盤中資料。開盤時間（09:00–13:30）每 5 分鐘更新一次，加權、櫃買、池內持股、今日新增與測試名單都會在這裡。</p></div></section>' + searchBox();
-      return;
+      el.innerHTML = '<section class="sec plain"><h2>盤中</h2><div class="body"><p class="empty">還沒有盤中資料。開盤時間（09:00–13:30）每 5 分鐘更新一次，加權、櫃買、池內持股、今日新增與測試名單都會在這裡。</p></div></section>' + mySection() + searchBox();
+      drawAllTL(el); return;
     }
     const it = q.items;
     h += `<div class="lstat">${statLine(q, phase)}</div>`;
@@ -306,6 +345,7 @@
     const idx = q.index || {};
     const ik = [['t00', 'TSE01'], ['o00', 'OTC01']].filter(([k]) => idx[k]);
     if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}${futCard()}</div>`;
+    h += mySection();
     const groups = LGROUPS;
     let any = false;
     groups.forEach(([k, title, c]) => {
@@ -338,12 +378,13 @@
     const el = $('#tab-live'); const q = D.quotes; if (!q || !q.items) return;
     const st = el.querySelector('.lstat'); if (st) st.innerHTML = statLine(q, marketPhase());
     const nc = el.querySelector('.notify'); if (nc) { const t = document.createElement('div'); t.innerHTML = notifyCard(); if (t.firstElementChild && t.firstElementChild.outerHTML !== nc.outerHTML) nc.replaceWith(t.firstElementChild); }
-    const put = (code, html) => { const old = el.querySelector(`.qc[data-k="${code}"]`); if (!old) return; if (old.outerHTML === html) return; const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; old.replaceWith(nu); drawAllTL(nu); };
+    const put = (code, html, scope) => { (scope || el).querySelectorAll(`.qc[data-k="${code}"]`).forEach(old => { if (old.outerHTML === html) return; const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; old.replaceWith(nu); drawAllTL(nu); }); };
+    const mySec = el.querySelector('.sec.my'); if (mySec) MY.codes.forEach(c => put(c, myCard(c), mySec));
     const idx = q.index || {};
     if (idx.t00) put('TSE01', quoteCard(idx.t00, { index: true, code: 'TSE01' }));
     if (idx.o00) put('OTC01', quoteCard(idx.o00, { index: true, code: 'OTC01' }));
     { const fh = futCard(); const grid = el.querySelector('.qgrid.idx'); if (fh && grid && !grid.querySelector('.qc-fut')) { grid.insertAdjacentHTML('beforeend', fh); drawAllTL(grid); } }
-    q.items.forEach(x => { const k = LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen'))); if (!k) return; const { ctx, flag } = ctxFor(x, k); put(x.code, quoteCard(x, { ctx, flag })); });
+    q.items.forEach(x => { const k = LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen'))); if (!k) return; const { ctx, flag } = ctxFor(x, k); el.querySelectorAll(`.sec:not(.my) .qc[data-k="${x.code}"]`).forEach(old => { const html = quoteCard(x, { ctx, flag }); if (old.outerHTML === html) return; const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; old.replaceWith(nu); drawAllTL(nu); }); });
   }
   // 五檔／分時展開
   document.addEventListener('click', e => {
@@ -356,7 +397,8 @@
     const q = D.quotes || {}; const x = code === 'TSE01' ? (q.index || {}).t00 : code === 'OTC01' ? (q.index || {}).o00 : (q.items || []).find(i => i.code === code);
     if (!x) return;
     const card = b.closest('.qc'); const kind = code === 'TSE01' || code === 'OTC01' ? null : LGROUPS.map(g => g[0]).find(k => x.kinds.includes(k) || (k === 'ext' && x.kinds.includes('extopen')));
-    const o = kind ? ctxFor(x, kind) : {}; const html = quoteCard(x, kind ? { ctx: o.ctx, flag: o.flag } : { index: true, code });
+    const isIdx = code === 'TSE01' || code === 'OTC01'; const inMy = !isIdx && b.closest('.sec.my');
+    const o = kind && !inMy ? ctxFor(x, kind) : {}; const html = inMy ? myCard(code) : quoteCard(x, kind ? { ctx: o.ctx, flag: o.flag } : isIdx ? { index: true, code } : {});
     const t = document.createElement('div'); t.innerHTML = html; const nu = t.firstElementChild; card.replaceWith(nu); drawAllTL(nu);
   }, true);
 
@@ -366,6 +408,7 @@
   function liveCodes() {
     const q = D.quotes || {}; const set = new Set(['TSE01', 'OTC01']);
     (q.items || []).forEach(x => set.add(x.code));
+    MY.codes.forEach(c => set.add(c));
     if (K.code && !$('#chart').hidden) set.add(K.code);
     return [...set];
   }
