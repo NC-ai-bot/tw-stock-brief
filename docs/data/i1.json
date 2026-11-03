@@ -1,13 +1,12 @@
 {
- "date": "2026-11-02",
+ "date": "2026-11-03",
  "bull": false,
  "max_new": 0,
- "room": 8,
+ "room": 9,
  "new": [],
  "filled": [],
  "unfilled": [],
- "exits": [],
- "holding": [
+ "exits": [
   {
    "code": "1303",
    "name": "南亞",
@@ -20,15 +19,20 @@
    "atr_pct": 6.59,
    "status": "filled",
    "entry": 318.0,
-   "days": 2,
-   "stop_now": 253.6,
+   "days": 3,
+   "stop_now": 251.77,
    "fill_date": "2026-10-29",
    "shares": 0.00019060888548284104,
    "hi": 318.0,
-   "last": 301.0,
-   "ret": -5.35,
-   "stop_dist": 18.69
-  },
+   "last": 271.0,
+   "ret": -15.28,
+   "stop_dist": 7.64,
+   "exit_date": "2026-11-03",
+   "exit": 271.0,
+   "why": "hard"
+  }
+ ],
+ "holding": [
   {
    "code": "2412",
    "name": "中華電",
@@ -41,89 +45,89 @@
    "atr_pct": 1.64,
    "status": "filled",
    "entry": 155.5,
-   "days": 2,
-   "stop_now": 151.93,
+   "days": 3,
+   "stop_now": 151.87,
    "fill_date": "2026-10-29",
    "shares": 0.0009632575830245758,
    "hi": 160.0,
-   "last": 159.5,
-   "ret": 2.57,
-   "stop_dist": 4.98
+   "last": 159.0,
+   "ret": 2.25,
+   "stop_dist": 4.7
   }
  ],
  "stats": {
   "start": "2026-10-22",
-  "closed": 1,
-  "avg": -11.64,
+  "closed": 2,
+  "avg": -13.46,
   "hit": 0,
-  "cum": -0.57,
-  "open": 2,
-  "bench": -2.62
+  "cum": -1.22,
+  "open": 1,
+  "bench": -5.89
  },
  "top": [
   {
    "code": "2801",
    "name": "彰銀",
-   "score": 5.15,
-   "close": 30.85,
-   "adx": 53.3,
-   "ret120": 56.3
-  },
-  {
-   "code": "2892",
-   "name": "第一金",
-   "score": 4.4,
-   "close": 43.65,
-   "adx": 49.1,
-   "ret120": 55.5
+   "score": 4.57,
+   "close": 29.7,
+   "adx": 52.5,
+   "ret120": 50.1
   },
   {
    "code": "1101",
    "name": "台泥",
-   "score": 4.22,
-   "close": 28.1,
-   "adx": 55.5,
-   "ret120": 14.0
+   "score": 4.24,
+   "close": 27.7,
+   "adx": 55.9,
+   "ret120": 14.6
   },
   {
-   "code": "5876",
-   "name": "上海商銀",
+   "code": "2892",
+   "name": "第一金",
    "score": 4.05,
-   "close": 54.3,
-   "adx": 47.1,
-   "ret120": 47.0
-  },
-  {
-   "code": "5880",
-   "name": "合庫金",
-   "score": 3.99,
-   "close": 29.05,
-   "adx": 39.4,
-   "ret120": 33.6
+   "close": 42.6,
+   "adx": 48.2,
+   "ret120": 50.0
   },
   {
    "code": "3045",
    "name": "台灣大",
-   "score": 3.64,
+   "score": 3.86,
    "close": 133.0,
-   "adx": 46.1,
+   "adx": 45.8,
    "ret120": 26.2
   },
   {
-   "code": "2884",
-   "name": "玉山金",
-   "score": 3.4,
-   "close": 48.7,
-   "adx": 41.5,
-   "ret120": 58.1
+   "code": "5880",
+   "name": "合庫金",
+   "score": 3.74,
+   "close": 28.45,
+   "adx": 39.2,
+   "ret120": 30.5
+  },
+  {
+   "code": "1216",
+   "name": "統一",
+   "score": 3.71,
+   "close": 81.1,
+   "adx": 34.2,
+   "ret120": 15.2
+  },
+  {
+   "code": "5876",
+   "name": "上海商銀",
+   "score": 3.53,
+   "close": 52.6,
+   "adx": 45.1,
+   "ret120": 42.0
   },
   {
    "code": "4938",
    "name": "和碩",
-   "score": 3.32,
-   "close": 102.5,
-   "adx": 42.0,
-   "ret120": 27.1
+   "score": 3.33,
+   "close": 101.5,
+   "adx": 41.8,
+   "ret120": 25.7
   }
  ],
  "params": {

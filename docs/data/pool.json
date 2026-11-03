@@ -1,84 +1,6 @@
 {
  "positions": [
   {
-   "code": "5876",
-   "name": "上海商銀",
-   "sector": "銀行",
-   "group": "強勢發動",
-   "entry_date": "2026-10-15",
-   "entry": 53.4,
-   "stop": [
-    "MA10",
-    null
-   ],
-   "stop_now": 54.3,
-   "days": 10,
-   "last": 54.3,
-   "ret": 1.69,
-   "prev_close": 54.3,
-   "stop_dist": 0.0
-  },
-  {
-   "code": "2834",
-   "name": "臺企銀",
-   "sector": "公股銀行",
-   "group": "趨勢翻多",
-   "entry_date": "2026-10-16",
-   "entry": 18.05,
-   "stop": [
-    "MA20",
-    null
-   ],
-   "stop_now": 17.75,
-   "days": 9,
-   "last": 18.05,
-   "ret": 0.0,
-   "prev_close": 18.05,
-   "stop_dist": 1.69
-  },
-  {
-   "code": "2356",
-   "name": "英業達",
-   "sector": "AI伺服器代工",
-   "group": "趨勢翻多",
-   "entry_date": "2026-10-20",
-   "entry": 60.0,
-   "stop": [
-    "MA20",
-    null
-   ],
-   "stop_now": 59.48,
-   "days": 7,
-   "last": 59.6,
-   "ret": -0.67,
-   "prev_close": 59.6,
-   "stop_dist": 0.19
-  },
-  {
-   "code": "3533",
-   "name": "嘉澤",
-   "sector": "連接器",
-   "group": "回檔站回",
-   "entry_date": "2026-10-27",
-   "entry": 1967.5,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 1723.28,
-   "days": 4,
-   "last": 1820.0,
-   "ret": -7.5,
-   "prev_close": 1820.0,
-   "stop_dist": 5.61,
-   "ref": 1925.0,
-   "cap": 1967.5,
-   "lot": 1925000,
-   "status": "filled",
-   "fill_date": "2026-10-28",
-   "fill_how": "上限價"
-  },
-  {
    "code": "2882",
    "name": "國泰金",
    "sector": "金控壽險",
@@ -90,11 +12,11 @@
     null
    ],
    "stop_now": 107.17,
-   "days": 3,
-   "last": 116.0,
-   "ret": 0.43,
-   "prev_close": 116.0,
-   "stop_dist": 8.24,
+   "days": 4,
+   "last": 113.0,
+   "ret": -2.16,
+   "prev_close": 113.0,
+   "stop_dist": 5.44,
    "ref": 115.5,
    "cap": 117.16,
    "lot": 115500,
@@ -114,14 +36,38 @@
     null
    ],
    "stop_now": 19.92,
-   "days": 0,
-   "last": 20.65,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 3.66,
+   "days": 1,
+   "last": 20.7,
+   "ret": 0.24,
+   "prev_close": 20.7,
+   "stop_dist": 3.93,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
+   "status": "filled",
+   "fill_date": "2026-11-03",
+   "fill_how": "開盤"
+  },
+  {
+   "code": "1802",
+   "name": "台玻",
+   "sector": "玻璃／玻纖布",
+   "group": "回檔站回",
+   "entry_date": "2026-11-03",
+   "entry": 67.7,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 56.92,
+   "days": 0,
+   "last": 67.7,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 18.94,
+   "ref": 67.7,
+   "cap": 70.24,
+   "lot": 67700,
    "status": "pending"
   }
  ],
@@ -233,6 +179,62 @@
    "why": "hard",
    "ret": -10.15,
    "fill_date": "2026-10-29"
+  },
+  {
+   "code": "5876",
+   "name": "上海商銀",
+   "sector": "銀行",
+   "group": "強勢發動",
+   "entry_date": "2026-10-15",
+   "entry": 53.4,
+   "exit_date": "2026-11-03",
+   "exit": 52.6,
+   "days": 11,
+   "why": "stop",
+   "ret": -1.5,
+   "fill_date": null
+  },
+  {
+   "code": "2834",
+   "name": "臺企銀",
+   "sector": "公股銀行",
+   "group": "趨勢翻多",
+   "entry_date": "2026-10-16",
+   "entry": 18.05,
+   "exit_date": "2026-11-03",
+   "exit": 17.7,
+   "days": 10,
+   "why": "stop",
+   "ret": -1.94,
+   "fill_date": null
+  },
+  {
+   "code": "2356",
+   "name": "英業達",
+   "sector": "AI伺服器代工",
+   "group": "趨勢翻多",
+   "entry_date": "2026-10-20",
+   "entry": 60.0,
+   "exit_date": "2026-11-03",
+   "exit": 57.2,
+   "days": 8,
+   "why": "stop",
+   "ret": -4.67,
+   "fill_date": null
+  },
+  {
+   "code": "3533",
+   "name": "嘉澤",
+   "sector": "連接器",
+   "group": "回檔站回",
+   "entry_date": "2026-10-27",
+   "entry": 1967.5,
+   "exit_date": "2026-11-03",
+   "exit": 1735.0,
+   "days": 5,
+   "why": "hard",
+   "ret": -11.82,
+   "fill_date": "2026-10-28"
   }
  ],
  "start": "2026-10-14",
@@ -302,6 +304,12 @@
    "date": "2026-11-02",
    "eq": 0.923675,
    "n": 5,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-03",
+   "eq": 0.907083,
+   "n": 2,
    "acct": "slot"
   }
  ],
