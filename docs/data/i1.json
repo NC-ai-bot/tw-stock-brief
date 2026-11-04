@@ -1,37 +1,12 @@
 {
- "date": "2026-11-03",
+ "date": "2026-11-04",
  "bull": false,
  "max_new": 0,
  "room": 9,
  "new": [],
  "filled": [],
  "unfilled": [],
- "exits": [
-  {
-   "code": "1303",
-   "name": "南亞",
-   "entry_date": "2026-10-28",
-   "ref": 319.0,
-   "cap": 329.51,
-   "w": 0.0607,
-   "equity_at": 1.0,
-   "score": 4.86,
-   "atr_pct": 6.59,
-   "status": "filled",
-   "entry": 318.0,
-   "days": 3,
-   "stop_now": 251.77,
-   "fill_date": "2026-10-29",
-   "shares": 0.00019060888548284104,
-   "hi": 318.0,
-   "last": 271.0,
-   "ret": -15.28,
-   "stop_dist": 7.64,
-   "exit_date": "2026-11-03",
-   "exit": 271.0,
-   "why": "hard"
-  }
- ],
+ "exits": [],
  "holding": [
   {
    "code": "2412",
@@ -45,14 +20,14 @@
    "atr_pct": 1.64,
    "status": "filled",
    "entry": 155.5,
-   "days": 3,
-   "stop_now": 151.87,
+   "days": 4,
+   "stop_now": 153.41,
    "fill_date": "2026-10-29",
    "shares": 0.0009632575830245758,
-   "hi": 160.0,
-   "last": 159.0,
-   "ret": 2.25,
-   "stop_dist": 4.7
+   "hi": 161.5,
+   "last": 161.5,
+   "ret": 3.86,
+   "stop_dist": 5.27
   }
  ],
  "stats": {
@@ -60,74 +35,74 @@
   "closed": 2,
   "avg": -13.46,
   "hit": 0,
-  "cum": -1.22,
+  "cum": -0.98,
   "open": 1,
-  "bench": -5.89
+  "bench": -6.59
  },
  "top": [
   {
-   "code": "2801",
-   "name": "彰銀",
-   "score": 4.57,
-   "close": 29.7,
-   "adx": 52.5,
-   "ret120": 50.1
+   "code": "3045",
+   "name": "台灣大",
+   "score": 4.11,
+   "close": 135.0,
+   "adx": 45.7,
+   "ret120": 28.1
   },
   {
-   "code": "1101",
-   "name": "台泥",
-   "score": 4.24,
-   "close": 27.7,
-   "adx": 55.9,
-   "ret120": 14.6
+   "code": "2801",
+   "name": "彰銀",
+   "score": 3.92,
+   "close": 29.35,
+   "adx": 50.6,
+   "ret120": 48.7
   },
   {
    "code": "2892",
    "name": "第一金",
-   "score": 4.05,
-   "close": 42.6,
-   "adx": 48.2,
-   "ret120": 50.0
+   "score": 3.74,
+   "close": 42.45,
+   "adx": 46.3,
+   "ret120": 49.2
   },
   {
-   "code": "3045",
-   "name": "台灣大",
-   "score": 3.86,
-   "close": 133.0,
-   "adx": 45.8,
-   "ret120": 26.2
+   "code": "1101",
+   "name": "台泥",
+   "score": 3.67,
+   "close": 27.25,
+   "adx": 54.2,
+   "ret120": 11.0
   },
   {
    "code": "5880",
    "name": "合庫金",
-   "score": 3.74,
-   "close": 28.45,
-   "adx": 39.2,
-   "ret120": 30.5
+   "score": 3.62,
+   "close": 28.5,
+   "adx": 38.6,
+   "ret120": 31.0
   },
   {
    "code": "1216",
    "name": "統一",
-   "score": 3.71,
-   "close": 81.1,
-   "adx": 34.2,
-   "ret120": 15.2
+   "score": 3.53,
+   "close": 80.9,
+   "adx": 34.9,
+   "ret120": 13.8
   },
   {
-   "code": "5876",
-   "name": "上海商銀",
-   "score": 3.53,
-   "close": 52.6,
-   "adx": 45.1,
-   "ret120": 42.0
+   "code": "2886",
+   "name": "兆豐金",
+   "score": 3.22,
+   "close": 53.5,
+   "adx": 40.6,
+   "ret120": 38.4
   },
   {
    "code": "4938",
    "name": "和碩",
-   "score": 3.33,
+   "score": 3.15,
    "close": 101.5,
-   "adx": 41.8,
-   "ret120": 25.7
+   "adx": 41.0,
+   "ret120": 27.2
   }
  ],
  "params": {

@@ -12,11 +12,11 @@
     null
    ],
    "stop_now": 107.17,
-   "days": 4,
-   "last": 113.0,
-   "ret": -2.16,
-   "prev_close": 113.0,
-   "stop_dist": 5.44,
+   "days": 5,
+   "last": 111.0,
+   "ret": -3.9,
+   "prev_close": 111.0,
+   "stop_dist": 3.57,
    "ref": 115.5,
    "cap": 117.16,
    "lot": 115500,
@@ -36,11 +36,11 @@
     null
    ],
    "stop_now": 19.92,
-   "days": 1,
-   "last": 20.7,
-   "ret": 0.24,
-   "prev_close": 20.7,
-   "stop_dist": 3.93,
+   "days": 2,
+   "last": 20.5,
+   "ret": -0.73,
+   "prev_close": 20.5,
+   "stop_dist": 2.92,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -54,21 +54,23 @@
    "sector": "玻璃／玻纖布",
    "group": "回檔站回",
    "entry_date": "2026-11-03",
-   "entry": 67.7,
+   "entry": 69.2,
    "stop": [
     "ST",
     null
    ],
    "stop_now": 56.92,
-   "days": 0,
-   "last": 67.7,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 18.94,
+   "days": 1,
+   "last": 66.7,
+   "ret": -3.61,
+   "prev_close": 66.7,
+   "stop_dist": 17.19,
    "ref": 67.7,
    "cap": 70.24,
    "lot": 67700,
-   "status": "pending"
+   "status": "filled",
+   "fill_date": "2026-11-04",
+   "fill_how": "開盤"
   }
  ],
  "closed": [
@@ -310,6 +312,12 @@
    "date": "2026-11-03",
    "eq": 0.907083,
    "n": 2,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-04",
+   "eq": 0.9012,
+   "n": 3,
    "acct": "slot"
   }
  ],

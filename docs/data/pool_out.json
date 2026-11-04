@@ -1,124 +1,10 @@
 {
- "date": "2026-11-03",
+ "date": "2026-11-04",
  "bull": false,
  "max_new": 1,
  "paused": false,
- "new": [
-  {
-   "code": "1802",
-   "name": "台玻",
-   "sector": "玻璃／玻纖布",
-   "group": "回檔站回",
-   "entry_date": "2026-11-03",
-   "entry": 67.7,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 56.92,
-   "days": 0,
-   "last": 67.7,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 18.94,
-   "ref": 67.7,
-   "cap": 70.24,
-   "lot": 67700,
-   "status": "pending"
-  }
- ],
- "exits": [
-  {
-   "code": "5876",
-   "name": "上海商銀",
-   "sector": "銀行",
-   "group": "強勢發動",
-   "entry_date": "2026-10-15",
-   "entry": 53.4,
-   "stop": [
-    "MA10",
-    null
-   ],
-   "stop_now": 54.13,
-   "days": 11,
-   "last": 52.6,
-   "ret": -1.5,
-   "prev_close": 52.6,
-   "stop_dist": -2.83,
-   "exit_date": "2026-11-03",
-   "exit": 52.6,
-   "why": "stop"
-  },
-  {
-   "code": "2834",
-   "name": "臺企銀",
-   "sector": "公股銀行",
-   "group": "趨勢翻多",
-   "entry_date": "2026-10-16",
-   "entry": 18.05,
-   "stop": [
-    "MA20",
-    null
-   ],
-   "stop_now": 17.76,
-   "days": 10,
-   "last": 17.7,
-   "ret": -1.94,
-   "prev_close": 17.7,
-   "stop_dist": -0.34,
-   "exit_date": "2026-11-03",
-   "exit": 17.7,
-   "why": "stop"
-  },
-  {
-   "code": "2356",
-   "name": "英業達",
-   "sector": "AI伺服器代工",
-   "group": "趨勢翻多",
-   "entry_date": "2026-10-20",
-   "entry": 60.0,
-   "stop": [
-    "MA20",
-    null
-   ],
-   "stop_now": 59.36,
-   "days": 8,
-   "last": 57.2,
-   "ret": -4.67,
-   "prev_close": 57.2,
-   "stop_dist": -3.64,
-   "exit_date": "2026-11-03",
-   "exit": 57.2,
-   "why": "stop"
-  },
-  {
-   "code": "3533",
-   "name": "嘉澤",
-   "sector": "連接器",
-   "group": "回檔站回",
-   "entry_date": "2026-10-27",
-   "entry": 1967.5,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 1723.28,
-   "days": 5,
-   "last": 1735.0,
-   "ret": -11.82,
-   "prev_close": 1735.0,
-   "stop_dist": 0.68,
-   "ref": 1925.0,
-   "cap": 1967.5,
-   "lot": 1925000,
-   "status": "filled",
-   "fill_date": "2026-10-28",
-   "fill_how": "上限價",
-   "exit_date": "2026-11-03",
-   "exit": 1735.0,
-   "why": "hard"
-  }
- ],
+ "new": [],
+ "exits": [],
  "holding": [
   {
    "code": "2882",
@@ -132,11 +18,11 @@
     null
    ],
    "stop_now": 107.17,
-   "days": 4,
-   "last": 113.0,
-   "ret": -2.16,
-   "prev_close": 113.0,
-   "stop_dist": 5.44,
+   "days": 5,
+   "last": 111.0,
+   "ret": -3.9,
+   "prev_close": 111.0,
+   "stop_dist": 3.57,
    "ref": 115.5,
    "cap": 117.16,
    "lot": 115500,
@@ -156,16 +42,40 @@
     null
    ],
    "stop_now": 19.92,
-   "days": 1,
-   "last": 20.7,
-   "ret": 0.24,
-   "prev_close": 20.7,
-   "stop_dist": 3.93,
+   "days": 2,
+   "last": 20.5,
+   "ret": -0.73,
+   "prev_close": 20.5,
+   "stop_dist": 2.92,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
    "status": "filled",
    "fill_date": "2026-11-03",
+   "fill_how": "開盤"
+  },
+  {
+   "code": "1802",
+   "name": "台玻",
+   "sector": "玻璃／玻纖布",
+   "group": "回檔站回",
+   "entry_date": "2026-11-03",
+   "entry": 69.2,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 56.92,
+   "days": 1,
+   "last": 66.7,
+   "ret": -3.61,
+   "prev_close": 66.7,
+   "stop_dist": 17.19,
+   "ref": 67.7,
+   "cap": 70.24,
+   "lot": 67700,
+   "status": "filled",
+   "fill_date": "2026-11-04",
    "fill_how": "開盤"
   }
  ],
@@ -198,13 +108,13 @@
   "start": "2026-10-14",
   "closed": 12,
   "open": 3,
-  "cum": -9.29,
+  "cum": -9.88,
   "avg": -5.91,
   "hit": 8,
   "stop_rate": 100,
   "win_avg": 1.65,
   "loss_avg": -6.6,
-  "bench": -10.97
+  "bench": -11.64
  },
  "ev": {
   "n": 532,
