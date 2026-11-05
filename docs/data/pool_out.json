@@ -1,10 +1,61 @@
 {
- "date": "2026-11-04",
+ "date": "2026-11-05",
  "bull": false,
  "max_new": 1,
  "paused": false,
- "new": [],
- "exits": [],
+ "new": [
+  {
+   "code": "1476",
+   "name": "儒鴻",
+   "sector": "紡織成衣／機能布",
+   "group": "回檔站回",
+   "entry_date": "2026-11-05",
+   "entry": 339.5,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 302.19,
+   "days": 0,
+   "last": 339.5,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 12.35,
+   "ref": 339.5,
+   "cap": 344.59,
+   "lot": 339500,
+   "status": "pending"
+  }
+ ],
+ "exits": [
+  {
+   "code": "1802",
+   "name": "台玻",
+   "sector": "玻璃／玻纖布",
+   "group": "回檔站回",
+   "entry_date": "2026-11-03",
+   "entry": 69.2,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 56.92,
+   "days": 2,
+   "last": 60.1,
+   "ret": -13.15,
+   "prev_close": 60.1,
+   "stop_dist": 5.6,
+   "ref": 67.7,
+   "cap": 70.24,
+   "lot": 67700,
+   "status": "filled",
+   "fill_date": "2026-11-04",
+   "fill_how": "開盤",
+   "exit_date": "2026-11-05",
+   "exit": 60.1,
+   "why": "hard"
+  }
+ ],
  "holding": [
   {
    "code": "2882",
@@ -18,11 +69,11 @@
     null
    ],
    "stop_now": 107.17,
-   "days": 5,
-   "last": 111.0,
-   "ret": -3.9,
-   "prev_close": 111.0,
-   "stop_dist": 3.57,
+   "days": 6,
+   "last": 112.0,
+   "ret": -3.03,
+   "prev_close": 112.0,
+   "stop_dist": 4.51,
    "ref": 115.5,
    "cap": 117.16,
    "lot": 115500,
@@ -41,41 +92,17 @@
     "ST",
     null
    ],
-   "stop_now": 19.92,
-   "days": 2,
-   "last": 20.5,
-   "ret": -0.73,
-   "prev_close": 20.5,
-   "stop_dist": 2.92,
+   "stop_now": 20.29,
+   "days": 3,
+   "last": 21.65,
+   "ret": 4.84,
+   "prev_close": 21.65,
+   "stop_dist": 6.71,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
    "status": "filled",
    "fill_date": "2026-11-03",
-   "fill_how": "開盤"
-  },
-  {
-   "code": "1802",
-   "name": "台玻",
-   "sector": "玻璃／玻纖布",
-   "group": "回檔站回",
-   "entry_date": "2026-11-03",
-   "entry": 69.2,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 56.92,
-   "days": 1,
-   "last": 66.7,
-   "ret": -3.61,
-   "prev_close": 66.7,
-   "stop_dist": 17.19,
-   "ref": 67.7,
-   "cap": 70.24,
-   "lot": 67700,
-   "status": "filled",
-   "fill_date": "2026-11-04",
    "fill_how": "開盤"
   }
  ],
@@ -106,15 +133,15 @@
  },
  "summary": {
   "start": "2026-10-14",
-  "closed": 12,
+  "closed": 13,
   "open": 3,
-  "cum": -9.88,
-  "avg": -5.91,
+  "cum": -10.22,
+  "avg": -6.47,
   "hit": 8,
   "stop_rate": 100,
   "win_avg": 1.65,
-  "loss_avg": -6.6,
-  "bench": -11.64
+  "loss_avg": -7.14,
+  "bench": -14.03
  },
  "ev": {
   "n": 532,

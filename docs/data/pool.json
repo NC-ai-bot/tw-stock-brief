@@ -12,11 +12,11 @@
     null
    ],
    "stop_now": 107.17,
-   "days": 5,
-   "last": 111.0,
-   "ret": -3.9,
-   "prev_close": 111.0,
-   "stop_dist": 3.57,
+   "days": 6,
+   "last": 112.0,
+   "ret": -3.03,
+   "prev_close": 112.0,
+   "stop_dist": 4.51,
    "ref": 115.5,
    "cap": 117.16,
    "lot": 115500,
@@ -35,12 +35,12 @@
     "ST",
     null
    ],
-   "stop_now": 19.92,
-   "days": 2,
-   "last": 20.5,
-   "ret": -0.73,
-   "prev_close": 20.5,
-   "stop_dist": 2.92,
+   "stop_now": 20.29,
+   "days": 3,
+   "last": 21.65,
+   "ret": 4.84,
+   "prev_close": 21.65,
+   "stop_dist": 6.71,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -49,28 +49,26 @@
    "fill_how": "開盤"
   },
   {
-   "code": "1802",
-   "name": "台玻",
-   "sector": "玻璃／玻纖布",
+   "code": "1476",
+   "name": "儒鴻",
+   "sector": "紡織成衣／機能布",
    "group": "回檔站回",
-   "entry_date": "2026-11-03",
-   "entry": 69.2,
+   "entry_date": "2026-11-05",
+   "entry": 339.5,
    "stop": [
     "ST",
     null
    ],
-   "stop_now": 56.92,
-   "days": 1,
-   "last": 66.7,
-   "ret": -3.61,
-   "prev_close": 66.7,
-   "stop_dist": 17.19,
-   "ref": 67.7,
-   "cap": 70.24,
-   "lot": 67700,
-   "status": "filled",
-   "fill_date": "2026-11-04",
-   "fill_how": "開盤"
+   "stop_now": 302.19,
+   "days": 0,
+   "last": 339.5,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 12.35,
+   "ref": 339.5,
+   "cap": 344.59,
+   "lot": 339500,
+   "status": "pending"
   }
  ],
  "closed": [
@@ -237,6 +235,20 @@
    "why": "hard",
    "ret": -11.82,
    "fill_date": "2026-10-28"
+  },
+  {
+   "code": "1802",
+   "name": "台玻",
+   "sector": "玻璃／玻纖布",
+   "group": "回檔站回",
+   "entry_date": "2026-11-03",
+   "entry": 69.2,
+   "exit_date": "2026-11-05",
+   "exit": 60.1,
+   "days": 2,
+   "why": "hard",
+   "ret": -13.15,
+   "fill_date": "2026-11-04"
   }
  ],
  "start": "2026-10-14",
@@ -318,6 +330,12 @@
    "date": "2026-11-04",
    "eq": 0.9012,
    "n": 3,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-05",
+   "eq": 0.897791,
+   "n": 2,
    "acct": "slot"
   }
  ],
