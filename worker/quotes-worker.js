@@ -241,7 +241,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (u.pathname === '/') {
-      const st = { ok: true, ver: 11, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
+      const st = { ok: true, ver: 12, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
       if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); const nm = await env.TL.get('night-meta'); if (nm) st.last_night = JSON.parse(nm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
       return json(st);
     }
@@ -280,11 +280,13 @@ export default {
     if (u.pathname === '/fut') {
       const key = new Request('https://cache.local/fut'); const cache = caches.default;
       const hit = await cache.match(key); if (hit) { const h = new Headers(hit.headers); Object.entries(CORS).forEach(([k, v]) => h.set(k, v)); return new Response(hit.body, { headers: h }); }
-      try {
-        const [day, night] = await Promise.all([taifex('0'), taifex('1')]);
-        const res = json({ ts: Date.now(), day, night }, 200, { 'cache-control': 'public, max-age=5' });
-        await cache.put(key, res.clone()); return res;
-      } catch (e) { return json({ error: String(e) }, 502); }
+      // 日盤與夜盤各自抓，一邊失敗不影響另一邊（以前用 Promise.all，期交所任一邊出錯整張卡就消失）
+      const [rd, rn] = await Promise.allSettled([taifex('0'), taifex('1')]);
+      const day = rd.status === 'fulfilled' ? rd.value : null, night = rn.status === 'fulfilled' ? rn.value : null;
+      const err = [rd, rn].filter(x => x.status === 'rejected').map(x => String(x.reason)).join('；') || undefined;
+      if (!day && !night) return json({ error: err || 'TAIFEX' }, 502);
+      const res = json({ ts: Date.now(), day, night, error: err }, 200, { 'cache-control': 'public, max-age=5' });
+      await cache.put(key, res.clone()); return res;
     }
     if (u.pathname === '/vapid') return json({ publicKey: (await ensureVapid(env.TL)).publicKey });
     if (req.method !== 'POST') return json({ error: 'method' }, 405);

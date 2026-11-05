@@ -193,14 +193,17 @@
     if (document.visibilityState !== 'visible') return;
     const s = futSession(); const every = s === 'day' ? 3000 : s === 'night' ? 10000 : 60000;
     if (Date.now() - FUT.at < every) return; FUT.at = Date.now();
-    try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); FUT.data = await r.json(); FUT.ok = true;
+    try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) { let m = String(r.status); try { m += ' ' + ((await r.json()).error || ''); } catch (e2) {} throw new Error(m); } FUT.data = await r.json(); FUT.ok = true; FUT.err = '';
       if (s) { const f = FUT.data[s] && FUT.data[s].near; if (f && f.last != null && f.time) { const k = s === 'day' ? 'FUT' : 'FUTN'; const arr = LIVE.ticks[k] = LIVE.ticks[k] || []; if (!arr.length || arr[arr.length - 1][0] !== f.time) { arr.push([f.time, f.last, f.vol]); if (arr.length > 3000) arr.shift(); saveTicks(); } } } }
-    catch (e) { FUT.ok = false; }
+    catch (e) { FUT.ok = false; FUT.err = String(e && e.message || e).slice(0, 120); }
     if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); const grid = document.querySelector('#tab-live .qgrid.idx'); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) { old.replaceWith(t.firstElementChild); drawAllTL(t.firstElementChild); } } else if (!old && html && grid) { grid.insertAdjacentHTML('beforeend', html); drawAllTL(grid); } }
   }
   function futCard() {
-    const d = FUT.data; if (!d) return '';
-    const which = futShow(); const sess = d[which] || d.day || {}; const f = sess.near; if (!f || f.last == null) return '';
+    const d = FUT.data;
+    const errCard = msg => `<div class="qc qc-idx qc-fut" data-k="FUT"><div class="qh"><span class="qn">台指期</span><span class="qt"></span></div><div class="qp"><b>—</b></div><div class="qx">${esc(msg)}</div></div>`;
+    if (!d) return FUT.ok === false ? errCard(`連不到期交所報價（${FUT.err || '伺服器錯誤'}），每 10–60 秒會再試。`) : '';
+    const which = futShow(); const sess = d[which] || d.day || {}; const f = sess.near;
+    if (!f || f.last == null) return errCard(`期交所目前沒有回傳${which === 'night' ? '夜盤' : '日盤'}近月報價${d.error ? '（' + d.error + '）' : ''}。`);
     const live = futSession() === which;
     const spot = (d.day && d.day.spot && d.day.spot.last) || null;
     const basis = spot != null ? f.last - spot : null;
