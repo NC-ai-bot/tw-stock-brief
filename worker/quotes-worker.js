@@ -86,8 +86,16 @@ async function universeCodes() {
 // ---------- 台指期（期交所行情資訊網） ----------
 const TAIFEX = 'https://mis.taifex.com.tw/futures/api/getQuoteList';
 async function taifex(marketType) {
-  const r = await fetch(TAIFEX, { method: 'POST', headers: { 'content-type': 'application/json', 'accept': 'application/json', 'user-agent': 'Mozilla/5.0', 'referer': 'https://mis.taifex.com.tw/futures/' }, body: JSON.stringify({ MarketType: marketType, SymbolType: 'F', KindID: '1', CID: 'TXF', ExpireMonth: '', RowSize: '全部', PageNo: '', SortColumn: '', AscDesc: 'A' }), cf: { cacheTtl: 0 } });
-  if (!r.ok) throw new Error('TAIFEX ' + r.status);
+  // 期交所偶爾回 520／52x（11/5 晚上整晚 520）：最多試 3 次，每次間隔 500ms
+  let r = null, lastErr = '';
+  for (let i = 0; i < 3; i++) {
+    try {
+      r = await fetch(TAIFEX, { method: 'POST', headers: { 'content-type': 'application/json', 'accept': 'application/json, text/plain, */*', 'accept-language': 'zh-TW,zh;q=0.9', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', 'origin': 'https://mis.taifex.com.tw', 'referer': 'https://mis.taifex.com.tw/futures/' }, body: JSON.stringify({ MarketType: marketType, SymbolType: 'F', KindID: '1', CID: 'TXF', ExpireMonth: '', RowSize: '全部', PageNo: '', SortColumn: '', AscDesc: 'A' }), cf: { cacheTtl: 0 } });
+      if (r.ok) break; lastErr = 'TAIFEX ' + r.status; r = null;
+    } catch (e) { lastErr = 'TAIFEX ' + String(e && e.message || e); r = null; }
+    await new Promise(res => setTimeout(res, 500));
+  }
+  if (!r) throw new Error(lastErr || 'TAIFEX');
   const j = await r.json(); const L = (j.RtData && j.RtData.QuoteList) || [];
   const n = v => { const x = parseFloat(String(v).replace(/,/g, '')); return isNaN(x) ? null : x; };
   const conv = x => ({ sym: x.SymbolID, name: x.DispCName, last: n(x.CLastPrice), ref: n(x.CRefPrice), chg: n(x.CDiff), pct: n(x.CDiffRate), open: n(x.COpenPrice), high: n(x.CHighPrice), low: n(x.CLowPrice), vol: n(x.CTotalVolume), oi: n(x.OpenInterest), bid: n(x.CBidPrice1), ask: n(x.CAskPrice1), bidv: n(x.CBidSize1), askv: n(x.CAskSize1), date: x.CDate, time: x.CTime ? `${x.CTime.slice(0, 2)}:${x.CTime.slice(2, 4)}:${x.CTime.slice(4, 6)}` : null, status: x.Status });
@@ -282,8 +290,16 @@ export default {
       const hit = await cache.match(key); if (hit) { const h = new Headers(hit.headers); Object.entries(CORS).forEach(([k, v]) => h.set(k, v)); return new Response(hit.body, { headers: h }); }
       // 日盤與夜盤各自抓，一邊失敗不影響另一邊（以前用 Promise.all，期交所任一邊出錯整張卡就消失）
       const [rd, rn] = await Promise.allSettled([taifex('0'), taifex('1')]);
-      const day = rd.status === 'fulfilled' ? rd.value : null, night = rn.status === 'fulfilled' ? rn.value : null;
+      let day = rd.status === 'fulfilled' ? rd.value : null, night = rn.status === 'fulfilled' ? rn.value : null;
       const err = [rd, rn].filter(x => x.status === 'rejected').map(x => String(x.reason)).join('；') || undefined;
+      // 成功的存成最後一筆（KV，保留 2 天）；失敗的拿最後一筆頂著並標 stale，讓 app 的卡片還在、並註明是幾點的資料
+      if (env.TL) {
+        const now = Date.now();
+        if (day && day.near) await env.TL.put('fut-last-day', JSON.stringify({ ts: now, v: day }), { expirationTtl: 86400 * 2 });
+        if (night && night.near) await env.TL.put('fut-last-night', JSON.stringify({ ts: now, v: night }), { expirationTtl: 86400 * 2 });
+        if (!day) { const o = JSON.parse((await env.TL.get('fut-last-day')) || 'null'); if (o) { day = o.v; day.stale = o.ts; } }
+        if (!night) { const o = JSON.parse((await env.TL.get('fut-last-night')) || 'null'); if (o) { night = o.v; night.stale = o.ts; } }
+      }
       if (!day && !night) return json({ error: err || 'TAIFEX' }, 502);
       const res = json({ ts: Date.now(), day, night, error: err }, 200, { 'cache-control': 'public, max-age=5' });
       await cache.put(key, res.clone()); return res;

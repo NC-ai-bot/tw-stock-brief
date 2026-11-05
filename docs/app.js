@@ -216,7 +216,7 @@
         <span><small>開</small>${fmt(f.open, 0)}</span><span><small>高</small>${fmt(f.high, 0)}</span><span><small>低</small>${fmt(f.low, 0)}</span><span><small>${which === 'day' ? '昨結' : '參考'}</small>${fmt(f.ref, 0)}</span>
         <span><small>買</small>${fmt(f.bid, 0)}</span><span><small>賣</small>${fmt(f.ask, 0)}</span><span><small>量</small>${fmt(f.vol, 0)}</span><span><small>價差</small>${basis == null ? '—' : `<i class="${cls(basis)}">${(basis > 0 ? '+' : '') + fmt(basis, 0)}</i>`}</span>
       </div>
-      <div class="qx">${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
+      <div class="qx">${sess.stale ? `<b style="color:var(--strong)">期交所暫時連不上${d.error ? '（' + esc(String(d.error).slice(0, 60)) + '）' : ''}，顯示 ${new Date(sess.stale + 8 * 3600000).toISOString().slice(11, 16)} 的最後報價。</b><br>` : ''}${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
       <button type="button" class="qfive" data-five="FUT" aria-expanded="${OPEN5.has('FUT')}">${OPEN5.has('FUT') ? '收合' : '分時走勢'}</button>
       ${OPEN5.has('FUT') ? `<div class="q5"><canvas class="tl" data-tl="${which === 'day' ? 'FUT' : 'FUTN'}" height="120"></canvas><div class="tlcap">${which === 'night' && LIVE.tlNightDate ? fmtD8(LIVE.tlNightDate) + ' ' : tlDayLabel()}${which === 'day' ? '日盤 08:45–13:45' : '夜盤 15:00–05:00'} 分時${(LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'] || []).length > 1 ? `（${LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'].length} 筆）` : '：伺服器每 1–2 分鐘自動累積'}</div></div>` : ''}
     </div>`;
