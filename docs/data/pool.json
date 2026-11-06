@@ -1,30 +1,6 @@
 {
  "positions": [
   {
-   "code": "2882",
-   "name": "國泰金",
-   "sector": "金控壽險",
-   "group": "回檔站回",
-   "entry_date": "2026-10-28",
-   "entry": 115.5,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 107.17,
-   "days": 6,
-   "last": 112.0,
-   "ret": -3.03,
-   "prev_close": 112.0,
-   "stop_dist": 4.51,
-   "ref": 115.5,
-   "cap": 117.16,
-   "lot": 115500,
-   "status": "filled",
-   "fill_date": "2026-10-29",
-   "fill_how": "開盤"
-  },
-  {
    "code": "2610",
    "name": "華航",
    "sector": "航空運輸",
@@ -36,11 +12,11 @@
     null
    ],
    "stop_now": 20.29,
-   "days": 3,
-   "last": 21.65,
-   "ret": 4.84,
-   "prev_close": 21.65,
-   "stop_dist": 6.71,
+   "days": 4,
+   "last": 21.2,
+   "ret": 2.66,
+   "prev_close": 21.2,
+   "stop_dist": 4.49,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -54,20 +30,44 @@
    "sector": "紡織成衣／機能布",
    "group": "回檔站回",
    "entry_date": "2026-11-05",
-   "entry": 339.5,
+   "entry": 322.5,
    "stop": [
     "ST",
     null
    ],
    "stop_now": 302.19,
-   "days": 0,
-   "last": 339.5,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 12.35,
+   "days": 1,
+   "last": 346.5,
+   "ret": 7.44,
+   "prev_close": 346.5,
+   "stop_dist": 14.66,
    "ref": 339.5,
    "cap": 344.59,
    "lot": 339500,
+   "status": "filled",
+   "fill_date": "2026-11-06",
+   "fill_how": "開盤"
+  },
+  {
+   "code": "9910",
+   "name": "豐泰",
+   "sector": "運動鞋代工",
+   "group": "回檔站回",
+   "entry_date": "2026-11-06",
+   "entry": 69.6,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 65.92,
+   "days": 0,
+   "last": 69.6,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 5.58,
+   "ref": 69.6,
+   "cap": 70.77,
+   "lot": 69600,
    "status": "pending"
   }
  ],
@@ -249,6 +249,20 @@
    "why": "hard",
    "ret": -13.15,
    "fill_date": "2026-11-04"
+  },
+  {
+   "code": "2882",
+   "name": "國泰金",
+   "sector": "金控壽險",
+   "group": "回檔站回",
+   "entry_date": "2026-10-28",
+   "entry": 115.5,
+   "exit_date": "2026-11-06",
+   "exit": 106.0,
+   "days": 7,
+   "why": "stop",
+   "ret": -8.23,
+   "fill_date": "2026-10-29"
   }
  ],
  "start": "2026-10-14",
@@ -335,6 +349,12 @@
   {
    "date": "2026-11-05",
    "eq": 0.897791,
+   "n": 2,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-06",
+   "eq": 0.897283,
    "n": 2,
    "acct": "slot"
   }
