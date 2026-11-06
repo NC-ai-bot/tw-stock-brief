@@ -360,10 +360,13 @@ export default {
     let changed = 0;
     const now = tpe(); const stamp = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:00`; // 這一分鐘的分時時間戳（每分鐘一筆）
     items.forEach(it => {
-      if (!it.code || !isFinite(it.last) || it.last <= 0 || it.date !== d) return;   // 證交所常回 z='-'（est＝用買賣價估），仍要記一筆，否則熱門股的分時會缺一大半（10/28 台積電只有 27 筆）
+      if (!it.code || !isFinite(it.last) || it.last <= 0 || it.date !== d) return;
+      if (it.est && stamp > '13:30:00') return; // 收盤後不再用買賣價估分時（否則 13:30 的收盤成交會被更晚的估價蓋住）   // 證交所常回 z='-'（est＝用買賣價估），仍要記一筆，否則熱門股的分時會缺一大半（10/28 台積電只有 27 筆）
       const arr = cur[it.code] = cur[it.code] || [];
       const t = it.est ? stamp : (it.time || stamp);
-      if (!arr.length || arr[arr.length - 1][0] < t) { arr.push([t, it.last, it.vol]); changed++; }
+      const L = arr[arr.length - 1];
+      if (!L || L[0] < t) { arr.push(it.est ? [t, it.last, it.vol, 1] : [t, it.last, it.vol]); changed++; }
+      else if (!it.est && L[0] === t && L[3] === 1) { arr[arr.length - 1] = [t, it.last, it.vol]; changed++; } // 同一分鐘先有估價、後來才有真成交（例如 13:30 收盤）→ 用真成交取代
     });
     try { const fd = (await taifex('0')).near; if (fd && fd.last != null && fd.time && fd.date === d) { const arr = cur.FUT = cur.FUT || []; if (!arr.length || arr[arr.length - 1][0] !== fd.time) { arr.push([fd.time, fd.last, fd.vol]); changed++; } } } catch (e) {} // 台指期日盤分時
     if (changed) await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 });

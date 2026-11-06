@@ -417,6 +417,11 @@
   }
   function tlDayLabel() { const today = tlKey().slice(3); return LIVE.tlDate && LIVE.tlDate !== today ? fmtD8(LIVE.tlDate) + ' ' : ''; }
   function tlKey() { const t = tpeNow(); return `tl-${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}`; }
+  // 當日參考價（昨收／除權息參考價）：盤中從證交所報價抓到就依「報價日期」記下來，收盤後（含跨過午夜）畫分時仍用同一個基準，不會變成當天收盤
+  let REF = {};
+  function loadRef() { try { REF = JSON.parse(localStorage.getItem('tlref') || '{}') || {}; const ds = Object.keys(REF).sort(); ds.slice(0, -2).forEach(d => delete REF[d]); } catch (e) { REF = {}; } }
+  function noteRef(q) { if (!q) return; let ch = false; const put = (code, x) => { if (!x || !x.prev || !x.date) return; const d = ymd8(x.date).replace(/-/g, ''); REF[d] = REF[d] || {}; if (REF[d][code] !== x.prev) { REF[d][code] = x.prev; ch = true; } }; (q.items || []).forEach(x => put(x.code, x)); if (q.index) { put('TSE01', q.index.t00); put('OTC01', q.index.o00); } if (ch) { const ds = Object.keys(REF).sort(); ds.slice(0, -2).forEach(d => delete REF[d]); try { localStorage.setItem('tlref', JSON.stringify(REF)); } catch (e) {} } }
+  loadRef();
   function loadTicks() { try { const raw = localStorage.getItem(tlKey()); if (raw) LIVE.ticks = JSON.parse(raw) || {}; Object.keys(localStorage).forEach(k => { if (k.startsWith('tl-') && k !== tlKey()) localStorage.removeItem(k); }); } catch (e) {} }
   let tlSaved = 0;
   function saveTicks() { if (LIVE.tlDay && LIVE.tlDay !== tlKey().slice(3)) return; const now = Date.now(); if (now - tlSaved < 15000) return; tlSaved = now; try { localStorage.setItem(tlKey(), JSON.stringify(LIVE.ticks)); } catch (e) {} }
@@ -445,7 +450,7 @@
       const t = tpeNow(); LIVE.at = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}`;
       q.data_date = (j.items.find(i => i.date) || {}).date || q.data_date;
       if (open) { q.market_open = true; q.updated = `${tpeNow().toISOString().slice(0, 10)} ${LIVE.at}`; }
-      LIVE.ok = true; if (LIVE.tlDay && LIVE.tlDay !== tlWantDay()) loadServerTicks(); saveTicks();
+      LIVE.ok = true; noteRef(D.quotes); if (LIVE.tlDay && LIVE.tlDay !== tlWantDay()) loadServerTicks(); saveTicks();
       if (!$('#tab-live').hidden) patchLive();
       patchPool(); renderHeader();
       if (!$('#chart').hidden) drawChart();
@@ -458,7 +463,7 @@
   let tlServerDay = null;
   // 顯示哪一天的分時：交易時段＝今天（本機 3 秒累積＋伺服器 1 分鐘）；非交易時段＝最近一個交易日（伺服器）
   // 交易日 08:00 起清掉前一天的分時、改顯示今天（開盤前是空的，台指期夜盤仍顯示昨晚到 08:45 換日盤）；其他時間顯示最近一個交易日
-  function tlWantDay() { const t = tpeNow(); const hm = t.getHours() * 60 + t.getMinutes(); return (FORCE_LIVE || (isTradingDay(t) && hm >= 8 * 60)) ? tlKey().slice(3) : 'last'; }
+  function tlWantDay() { const t = tpeNow(); const hm = t.getHours() * 60 + t.getMinutes(); return (FORCE_LIVE || (isTradingDay(t) && hm >= 8 * 60 + 30)) ? tlKey().slice(3) : 'last'; } // 當日走勢只在交易日 08:30 重置，之後到隔天 08:30 前都維持當天的畫面
   async function loadServerTicks() {
     const want = tlWantDay();
     if (LIVE.tlDay && LIVE.tlDay !== want && !(want === 'last' && LIVE.tlDay === LIVE.tlDate)) { LIVE.ticks = {}; LIVE.tlLoaded = new Set(); tlServerDay = null; } // 換天／換模式：清掉本機的
@@ -589,7 +594,7 @@
   // 自動更新：交易時段每 60 秒重抓 quotes.json
   setInterval(() => {
     if (document.visibilityState !== 'visible' || marketPhase() !== 'open' || LIVE.ok) return;
-    fetch(`data/quotes.json?t=${Date.now()}`, { cache: 'reload' }).then(r => r.ok ? r.json() : null).then(j => { if (j && JSON.stringify(j) !== JSON.stringify(D.quotes)) { D.quotes = j; renderLive(); if (!$('#chart').hidden) drawChart(); } }).catch(() => {});
+    fetch(`data/quotes.json?t=${Date.now()}`, { cache: 'reload' }).then(r => r.ok ? r.json() : null).then(j => { if (j && JSON.stringify(j) !== JSON.stringify(D.quotes)) { D.quotes = j; noteRef(j); renderLive(); if (!$('#chart').hidden) drawChart(); } }).catch(() => {});
   }, 60000);
 
   // 搜尋（股票池清單從 kl/index.json 取）
@@ -1158,12 +1163,16 @@
     const code = K.code, q = D.quotes || {};
     const item = code === 'TSE01' ? (q.index || {}).t00 : code === 'OTC01' ? (q.index || {}).o00 : (q.items || []).find(i => i.code === code);
     const all = s.bars, last = all[all.length - 1];
-    const prev = item && item.prev ? item.prev : (last[6] && all.length > 1 ? all[all.length - 2][4] : last[4]);
-    const ticks = (LIVE.ticks[code] || []).slice();
     const open = marketPhase() === 'open';
     const day = (LIVE.tlDate && LIVE.tlDate !== tlKey().slice(3)) ? ymd8(LIVE.tlDate) : (item && item.date ? ymd8(item.date) : last[0]);
+    // 昨收＝分時那一天「前一根」日K的收盤（晚上日K已更新到當天時，不能拿當天收盤當昨收；11/6 0050 除息日曾顯示 92.50 +0.08%）
+    const before = all.filter(b => b[0] < day); const dayBar = all.find(b => b[0] === day && !b[6]);
+    const dayKey = day.replace(/-/g, ''); const refSaved = REF[dayKey] && REF[dayKey][code];
+    const prev = refSaved || (item && item.prev && item.date && ymd8(item.date) === day ? item.prev : (before.length ? before[before.length - 1][4] : (last[6] && all.length > 1 ? all[all.length - 2][4] : last[4])));
+    const isFut = code === 'FUT' || code === 'FUTN';
+    const ticks = (LIVE.ticks[code] || []).filter(t => isFut || t[0] <= '13:30:59'); // 13:30 之後的估價不畫
     $('#ctitle').textContent = `${s.code} ${s.name}`;
-    const lp = ticks.length ? ticks[ticks.length - 1][1] : (item && item.last != null ? item.last : last[4]);
+    const lp = (!open && dayBar) ? dayBar[4] : ticks.length ? ticks[ticks.length - 1][1] : (item && item.last != null ? item.last : last[4]);
     const chg = prev ? (lp / prev - 1) * 100 : null;
     $('#csub').innerHTML = `${esc(day)}${open ? '（盤中' + (LIVE.ok ? '，即時報價' : '') + '）' : '（收盤）'} <b>${fmt(lp)}</b> <span class="${cls(chg)}">${pct(chg)}</span>・分時・昨收 ${fmt(prev)}`;
     const padL = 6, padR = 74, bottom = 16, gapP = 12;
