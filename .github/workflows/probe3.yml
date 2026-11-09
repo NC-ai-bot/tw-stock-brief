@@ -1,0 +1,18 @@
+name: probe3
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA='Mozilla/5.0'; NOW=$(date +%s)
+          echo "=== D bars"; curl -sS -m 20 -A "$UA" "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=D&quote=1&from=$NOW&to=$((NOW-86400*10))" | python3 -c "
+          import json,sys,datetime;d=json.load(sys.stdin)['data'];[print(datetime.datetime.fromtimestamp(t,datetime.UTC).strftime('%m-%d %H:%M'),d['o'][i],d['h'][i],d['l'][i],d['c'][i],d['v'][i]) for i,t in enumerate(d['t'])];print('quote',json.dumps(d.get('quote'))[:800])"
+          echo "=== 1min day-session range only"; curl -sS -m 20 -A "$UA" "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=$((NOW-12*3600))&to=$((NOW-17*3600))" | python3 -c "
+          import json,sys,datetime;d=json.load(sys.stdin)['data'];t=d['t'];print('n',len(t)); print([datetime.datetime.fromtimestamp(x+28800,datetime.UTC).strftime('%d %H:%M') for x in sorted(t)[:3]+sorted(t)[-3:]] if t else '')"
+          echo "=== 5min 2 days"; curl -sS -m 20 -A "$UA" "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=5&from=$NOW&to=$((NOW-86400*2))" | python3 -c "
+          import json,sys,datetime,collections;d=json.load(sys.stdin)['data'];t=d['t'];print('n',len(t));c=collections.Counter(datetime.datetime.fromtimestamp(x+28800,datetime.UTC).strftime('%d %H') for x in t);print(sorted(c.items()))"
+          echo "=== quotes v1 TWF"; curl -sS -m 20 -A "$UA" "https://ws.api.cnyes.com/ws/api/v1/quote/quotes?symbol=TWF:TXF:FUT" | head -c 300; echo
+          echo "=== quote v2"; curl -sS -m 20 -A "$UA" "https://ws.api.cnyes.com/ws/api/v2/quote/quotes?symbol=TWF:TXF:FUT" | head -c 300; echo
+          echo "=== quote marketprice"; curl -sS -m 20 -A "$UA" "https://ws.api.cnyes.com/ws/api/v1/quote/marketprice?symbol=TWF:TXF:FUT" | head -c 300; echo
+          echo "=== tw.stock.yahoo CORS preflight"; curl -sS -m 20 -D - -o /dev/null -X OPTIONS -H 'Origin: https://nc-ai-bot.github.io' -H 'Access-Control-Request-Method: GET' 'https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=WTX%26' | grep -iE '^HTTP|access-control'
