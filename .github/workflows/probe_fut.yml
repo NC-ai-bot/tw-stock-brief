@@ -1,0 +1,22 @@
+name: probe_fut
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe
+        run: |
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+          p() { echo "=== $1"; curl -sS -m 20 -o /tmp/o -w 'HTTP %{http_code}\n' -A "$UA" -H 'accept: application/json, text/plain, */*' "${@:2}" "$1" || echo FAIL; head -c 900 /tmp/o; echo; echo; }
+          p 'https://mis.taifex.com.tw/futures/api/getQuoteList' -X POST -H 'content-type: application/json' -H 'referer: https://mis.taifex.com.tw/futures/' --data '{"MarketType":"1","SymbolType":"F","KindID":"1","CID":"TXF","ExpireMonth":"","RowSize":"全部","PageNo":"","SortColumn":"","AscDesc":"A"}'
+          p 'https://ws.api.cnyes.com/ws/api/v1/quote/quotes?symbol=TWF:TXF:FUT&column=A'
+          p 'https://ws.api.cnyes.com/ws/api/v1/quote/quotes?symbol=TWF:TXFX6:FUT&column=A'
+          p 'https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&quote=1&from=9999999999&to=0'
+          echo "=== cnyes futures page symbols"; curl -sS -m 20 -A "$UA" 'https://www.cnyes.com/futures/' | grep -oE 'TWF:[A-Z0-9&]+:[A-Z]+' | sort | uniq -c | sort -rn | head -20
+          p 'https://tw.stock.yahoo.com/quote/WTX%26' -H 'accept: text/html'
+          echo "=== yahoo WTX json bits"; curl -sS -m 20 -A "$UA" 'https://tw.stock.yahoo.com/quote/WTX%26' | grep -oE '"(price|changePercent|change|regularMarketPrice|previousClose|symbolName|marketTime|time)":"?[^,}]{1,40}' | head -20
+          p 'https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=WTX%26,WTXAFE%26?bkt=&device=desktop&lang=zh-TW&region=TW'
+          p 'https://query1.finance.yahoo.com/v8/finance/chart/WTX%26.TW?range=1d&interval=1m'
+          p 'https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?range=1d&interval=5m'
+          p 'https://histock.tw/index-tw/TXF' -H 'accept: text/html'
+          echo "=== histock futures list"; curl -sS -m 20 -A "$UA" 'https://histock.tw/futures' | grep -oE 'href="[^"]*(TXF|future|futures)[^"]*"' | sort -u | head -15
