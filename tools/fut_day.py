@@ -34,8 +34,10 @@ def main(docs):
     near = next((x for x in L if re.match(r'^TXF[A-Z]\d-[FM]$', x.get('SymbolID', ''))), None)
     if not near:
         print('no near-month quote'); return 2
-    if near.get('CDate') != today:
-        print('quote date', near.get('CDate'), '!= today', today, '→ 休市，略過'); return 3
+    cdate = near.get('CDate') or today  # 期交所回的報價日期；休市日或夜間跑到會是最近一個交易日，照那一天存（內容相同，無害）
+    if cdate != today:
+        print('quote date', cdate, '!= today', today, '→ 以報價日期存檔')
+    today = cdate
     out = {'date': today, 'sym': near['SymbolID'], 'name': near.get('DispCName'), 'settle': num(near.get('SettlementPrice')), 'last': num(near.get('CLastPrice')), 'ref': num(near.get('CRefPrice')),
            'open': num(near.get('COpenPrice')), 'high': num(near.get('CHighPrice')), 'low': num(near.get('CLowPrice')), 'vol': num(near.get('CTotalVolume')), 'oi': num(near.get('OpenInterest')),
            'time': near.get('CTime'), 'ticks': []}
@@ -55,6 +57,10 @@ def main(docs):
     except Exception as e:
         print('cnyes ticks failed:', e)
     os.makedirs(os.path.join(docs, 'data', 'fut'), exist_ok=True)
+    old_p = os.path.join(docs, 'data', 'fut', today + '.json')
+    if not out['ticks'] and os.path.exists(old_p):  # 夜間重跑抓不到日盤分時，保留原本的
+        try: out['ticks'] = json.load(open(old_p, encoding='utf-8')).get('ticks') or []
+        except Exception: pass
     for name in (today + '.json', 'last.json'):
         with open(os.path.join(docs, 'data', 'fut', name), 'w', encoding='utf-8') as f:
             json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
