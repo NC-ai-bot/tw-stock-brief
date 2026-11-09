@@ -5,9 +5,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          NOW=$(date +%s); for R in 15 60; do echo "=== res $R"; curl -sS -m 20 -A Mozilla/5.0 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=$R&from=$NOW&to=$((NOW-864000))" | python3 -c "
-          import json,sys,datetime;d=json.load(sys.stdin)['data'];t=sorted(d['t']);print('n',len(t),'first',datetime.datetime.fromtimestamp(t[0]+28800,datetime.UTC),'last',datetime.datetime.fromtimestamp(t[-1]+28800,datetime.UTC))
+          NOW=$(date +%s); for R in 15 30 60 240; do echo "=== res $R"; curl -sS -m 20 -A Mozilla/5.0 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=$R&from=$NOW&to=$((NOW-864000))" | python3 -c "
+          import json,sys,datetime;j=json.load(sys.stdin);d=j.get('data') or {};t=sorted(d.get('t') or [])
+          if not t: print('EMPTY',json.dumps(j)[:200]); sys.exit()
+          print('n',len(t),'first',datetime.datetime.fromtimestamp(t[0]+28800,datetime.UTC),'last',datetime.datetime.fromtimestamp(t[-1]+28800,datetime.UTC))
           ix={x:i for i,x in enumerate(d['t'])}
           for x in t:
             te=datetime.datetime.fromtimestamp(x+28800+int(sys.argv[1]),datetime.UTC)
-            if te.strftime('%H:%M') in ('13:45','13:30','13:00') : print(te.strftime('%m-%d %H:%M'), d['c'][ix[x]])" $((R*60)); done
+            if te.strftime('%H:%M') in ('13:45','14:00','13:30','13:00') : print(te.strftime('%m-%d %H:%M'), d['c'][ix[x]])" $((R*60)) || true; done
+          echo "=== res 5 span"; curl -sS -m 20 -A Mozilla/5.0 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=5&from=$NOW&to=$((NOW-864000))" | python3 -c "
+          import json,sys,datetime;j=json.load(sys.stdin);d=j.get('data') or {};t=sorted(d.get('t') or []);print('n',len(t), datetime.datetime.fromtimestamp(t[0]+28800,datetime.UTC) if t else '')"
