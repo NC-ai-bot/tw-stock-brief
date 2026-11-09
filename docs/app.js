@@ -189,13 +189,50 @@
   const FUT = { data: null, at: 0, ok: null };
   function futSession() { const t = tpeNow(), hm = t.getHours() * 60 + t.getMinutes(), wd = t.getDay(); const wk = wd >= 1 && wd <= 5; if (wk && hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) return 'day'; if ((wk && hm >= 15 * 60) || (hm < 5 * 60 && wd >= 2 && wd <= 6)) return 'night'; return null; }
   function futShow() { const s = futSession(); if (s) return s; const hm = tpeNow().getHours() * 60 + tpeNow().getMinutes(); return hm > 13 * 60 + 45 && hm < 15 * 60 ? 'day' : 'night'; }
+  // 鉅亨 台指期連續月 1 分 K → 日盤／夜盤分時（與 Worker 同一套切法）
+  async function cnyesFut() {
+    const now = Math.floor(Date.now() / 1000);
+    const r = await fetch(`https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=${now}&to=${now - 16 * 3600}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('cnyes ' + r.status);
+    const d = ((await r.json()) || {}).data || {}; const T = d.t || [];
+    const rows = T.map((t, i) => ({ t, o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: d.v[i] || 0 })).filter(x => x.c != null).sort((a, b) => a.t - b.t);
+    const mk = () => ({ date: null, ticks: [], o: null, h: null, l: null });
+    const out = { day: mk(), night: mk() }; let cum = { day: 0, night: 0 };
+    rows.forEach(x => {
+      const tp = new Date((x.t + 60) * 1000 + 8 * 3600000); const hh = tp.getUTCHours(), mm = tp.getUTCMinutes(), hm = hh * 60 + mm;
+      const ds = tp.toISOString().slice(0, 10).replace(/-/g, ''); const stamp = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
+      let k = null, date = ds;
+      if (hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) k = 'day'; else if (hm >= 15 * 60 || hm <= 5 * 60) { k = 'night'; if (hm <= 5 * 60) date = new Date(tp.getTime() - 86400000).toISOString().slice(0, 10).replace(/-/g, ''); }
+      if (!k) return; const o = out[k];
+      if (o.date !== date) { out[k] = mk(); out[k].date = date; out[k].o = x.o; cum[k] = 0; }
+      const q = out[k]; cum[k] += x.v; q.h = q.h == null ? x.h : Math.max(q.h, x.h); q.l = q.l == null ? x.l : Math.min(q.l, x.l); q.ticks.push([stamp, x.c, cum[k]]);
+    });
+    return out;
+  }
   async function futPoll() {
     if (document.visibilityState !== 'visible') return;
     const s = futSession(); const every = s === 'day' ? 3000 : s === 'night' ? 10000 : 60000;
     if (Date.now() - FUT.at < every) return; FUT.at = Date.now();
     try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) { let m = String(r.status); try { m += ' ' + ((await r.json()).error || ''); } catch (e2) {} throw new Error(m); } FUT.data = await r.json(); FUT.ok = true; FUT.err = '';
-      if (s) { const f = FUT.data[s] && FUT.data[s].near; if (f && f.last != null && f.time) { const k = s === 'day' ? 'FUT' : 'FUTN'; const arr = LIVE.ticks[k] = LIVE.ticks[k] || []; if (!arr.length || arr[arr.length - 1][0] !== f.time) { arr.push([f.time, f.last, f.vol]); if (arr.length > 3000) arr.shift(); saveTicks(); } } } }
+      if (s) { const f = FUT.data[s] && FUT.data[s].near; if (f && f.last != null && f.time && !FUT.data[s].stale) { const k = s === 'day' ? 'FUT' : 'FUTN'; const arr = LIVE.ticks[k] = LIVE.ticks[k] || []; if (!arr.length || arr[arr.length - 1][0] !== f.time) { arr.push([f.time, f.last, f.vol]); if (arr.length > 3000) arr.shift(); saveTicks(); } } } }
     catch (e) { FUT.ok = false; FUT.err = String(e && e.message || e).slice(0, 120); }
+    // 備援：期交所（經 Worker）拿不到現在這一節的即時報價時，瀏覽器直接抓鉅亨的台指期 1 分 K（鉅亨允許跨網域）
+    try {
+      const cur = s && FUT.data && FUT.data[s];
+      const need = s && (!FUT.ok || !cur || !cur.near || cur.near.last == null || cur.stale);
+      if (need && Date.now() - (FUT.cnAt || 0) >= 15000) {
+        FUT.cnAt = Date.now(); const cn = await cnyesFut();
+        const sess = cn[s]; const today = tlKey().slice(3);
+        if (sess && sess.ticks.length && (s === 'day' ? sess.date === today : true)) {
+          const prevNear = cur && cur.near; const dayLast = cn.day.ticks.length ? cn.day.ticks[cn.day.ticks.length - 1][1] : null;
+          const ref = s === 'night' ? (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null) : ((prevNear && prevNear.ref) || null);
+          const last = sess.ticks[sess.ticks.length - 1][1];
+          const near = { sym: 'TXF', name: '台指期近月', last, ref, chg: ref != null ? last - ref : null, pct: ref ? (last / ref - 1) * 100 : null, open: sess.o, high: sess.h, low: sess.l, vol: sess.ticks[sess.ticks.length - 1][2], bid: null, ask: null, date: sess.date, time: sess.ticks[sess.ticks.length - 1][0], src: 'cnyes' };
+          FUT.data = FUT.data || {}; FUT.data[s] = { spot: cur && cur.spot || null, near, src: 'cnyes' }; FUT.ok = true;
+          const k = s === 'day' ? 'FUT' : 'FUTN'; mergeTicks(k, sess.ticks); saveTicks();
+        }
+      }
+    } catch (e) {}
     if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); const grid = document.querySelector('#tab-live .qgrid.idx'); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) { old.replaceWith(t.firstElementChild); drawAllTL(t.firstElementChild); } } else if (!old && html && grid) { grid.insertAdjacentHTML('beforeend', html); drawAllTL(grid); } }
   }
   function futCard() {
@@ -216,7 +253,7 @@
         <span><small>開</small>${fmt(f.open, 0)}</span><span><small>高</small>${fmt(f.high, 0)}</span><span><small>低</small>${fmt(f.low, 0)}</span><span><small>${which === 'day' ? '昨結' : '參考'}</small>${fmt(f.ref, 0)}</span>
         <span><small>買</small>${fmt(f.bid, 0)}</span><span><small>賣</small>${fmt(f.ask, 0)}</span><span><small>量</small>${fmt(f.vol, 0)}</span><span><small>價差</small>${basis == null ? '—' : `<i class="${cls(basis)}">${(basis > 0 ? '+' : '') + fmt(basis, 0)}</i>`}</span>
       </div>
-      <div class="qx">${f.src === 'yahoo' ? '<span style="color:var(--muted)">報價來源：Yahoo 股市（期交所暫時連不上，自動切換）。</span><br>' : ''}${sess.stale ? `<b style="color:var(--strong)">期交所暫時連不上${d.error ? '（' + esc(String(d.error).slice(0, 60)) + '）' : ''}，顯示 ${new Date(sess.stale + 8 * 3600000).toISOString().slice(11, 16)} 的最後報價。</b><br>` : ''}${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
+      <div class="qx">${f.src === 'yahoo' ? '<span style="color:var(--muted)">報價來源：Yahoo 股市（期交所暫時連不上，自動切換）。</span><br>' : f.src === 'cnyes' ? '<span style="color:var(--muted)">報價來源：鉅亨 1 分 K（期交所暫時連不上，自動切換；無五檔，最多延遲 1 分鐘）。</span><br>' : ''}${sess.stale ? `<b style="color:var(--strong)">期交所暫時連不上${d.error ? '（' + esc(String(d.error).slice(0, 60)) + '）' : ''}，顯示 ${new Date(sess.stale + 8 * 3600000).toISOString().slice(11, 16)} 的最後報價。</b><br>` : ''}${which === 'night' ? '夜盤 15:00–05:00，參考價為日盤結算；' : ''}價差＝期貨 − 加權現貨${spot ? `（${fmt(spot, 0)}）` : ''}，正值為正價差。</div>
       <button type="button" class="qfive" data-five="FUT" aria-expanded="${OPEN5.has('FUT')}">${OPEN5.has('FUT') ? '收合' : '分時走勢'}</button>
       ${OPEN5.has('FUT') ? `<div class="q5"><canvas class="tl" data-tl="${which === 'day' ? 'FUT' : 'FUTN'}" height="120"></canvas><div class="tlcap">${which === 'night' && LIVE.tlNightDate ? fmtD8(LIVE.tlNightDate) + ' ' : tlDayLabel()}${which === 'day' ? '日盤 08:45–13:45' : '夜盤 15:00–05:00'} 分時${(LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'] || []).length > 1 ? `（${LIVE.ticks[which === 'day' ? 'FUT' : 'FUTN'].length} 筆）` : '：伺服器每 1–2 分鐘自動累積'}</div></div>` : ''}
     </div>`;
@@ -494,6 +531,9 @@
       const r = await fetch(`${LIVE.url}/tl?date=${tlWantDay()}&codes=FUT,FUTN`, { cache: 'no-store' }); if (!r.ok) return; const j = await r.json();
       let changed = false; ['FUT', 'FUTN'].forEach(c => { if (Array.isArray(j[c]) && j[c].length) { const n0 = (LIVE.ticks[c] || []).length; mergeTicks(c, j[c]); if ((LIVE.ticks[c] || []).length !== n0) changed = true; } });
       if (j._nightDate) LIVE.tlNightDate = j._nightDate;
+      try { const cn = await cnyesFut(); const today = tlKey().slice(3); const wantN = LIVE.tlNightDate || (tpeNow().getHours() < 12 ? null : today);
+        if (cn.day.date === today && cn.day.ticks.length) { const n0 = (LIVE.ticks.FUT || []).length; mergeTicks('FUT', cn.day.ticks); if ((LIVE.ticks.FUT || []).length !== n0) changed = true; }
+        if (cn.night.ticks.length && (!wantN || cn.night.date === wantN || cn.night.date === today)) { const n0 = (LIVE.ticks.FUTN || []).length; mergeTicks('FUTN', cn.night.ticks); LIVE.tlNightDate = cn.night.date; if ((LIVE.ticks.FUTN || []).length !== n0) changed = true; } } catch (e) {}
       if (changed) { saveTicks(); if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); if (old) drawAllTL(old); } if (!$('#chart').hidden && K.period === 'T') drawChart(); }
     } catch (e) {}
   }
