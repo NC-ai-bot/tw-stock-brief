@@ -219,6 +219,18 @@
     const pick = o => Object.values(o).sort((a, b) => a.date < b.date ? 1 : -1)[0] || mk();
     return { day: S.day[key(sessDay)] || pick(S.day), night: S.night[key(sessDay)] || pick(S.night), dayClose, sessDay: key(sessDay), prevDayLast: dayClose[key(prevDay)] || null };
   }
+  // 期交所日盤收盤摘要（GitHub Actions 每交易日收盤後存 data/fut/YYYYMMDD.json：結算價、收盤、日盤分時）
+  const FUTD = {};
+  async function futDayFile(dateKey) {
+    if (!dateKey) return null; if (dateKey in FUTD) return FUTD[dateKey];
+    try { const r = await fetch(`data/fut/${dateKey}.json?t=${Math.floor(Date.now() / 300000)}`, { cache: 'no-store' }); FUTD[dateKey] = r.ok ? await r.json() : null; } catch (e) { FUTD[dateKey] = null; }
+    return FUTD[dateKey];
+  }
+  async function futPrevDayFile(dateKey) { // dateKey 之前最近一個有檔的交易日
+    const d = new Date(Date.parse(`${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6)}T00:00:00Z`));
+    for (let i = 0; i < 6; i++) { d.setUTCDate(d.getUTCDate() - 1); if (d.getUTCDay() === 0 || d.getUTCDay() === 6) continue; const f = await futDayFile(d.toISOString().slice(0, 10).replace(/-/g, '')); if (f) return f; }
+    return null;
+  }
   async function futPoll() {
     if (document.visibilityState !== 'visible') return;
     const s = futSession(); const every = s === 'day' ? 3000 : s === 'night' ? 10000 : 60000;
@@ -235,14 +247,15 @@
         const sess = cn[s]; const today = tlKey().slice(3);
         if (sess && sess.ticks.length && (s === 'day' ? sess.date === today : true)) {
           const prevNear = cur && cur.near; const dayLast = cn.day.ticks.length ? cn.day.ticks[cn.day.ticks.length - 1][1] : null;
-          const ref = s === 'night' ? (cn.dayClose[sess.date] != null ? cn.dayClose[sess.date] : (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null)) : ((prevNear && prevNear.ref) || cn.prevDayLast || null);
+          const fd = s === 'night' ? await futDayFile(sess.date) : await futPrevDayFile(sess.date); const fileRef = fd ? (fd.settle || fd.last) : null;
+          const ref = fileRef || (s === 'night' ? (cn.dayClose[sess.date] != null ? cn.dayClose[sess.date] : (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null)) : ((prevNear && prevNear.ref) || cn.prevDayLast || null));
           const last = sess.ticks[sess.ticks.length - 1][1];
           const near = { sym: 'TXF', name: '台指期近月', last, ref, chg: ref != null ? last - ref : null, pct: ref ? (last / ref - 1) * 100 : null, open: sess.o, high: sess.h, low: sess.l, vol: sess.ticks[sess.ticks.length - 1][2], bid: null, ask: null, date: sess.date, time: sess.ticks[sess.ticks.length - 1][0], src: 'cnyes' };
           FUT.data = FUT.data || {}; FUT.data[s] = { spot: cur && cur.spot || null, near, src: 'cnyes' }; FUT.ok = true;
           const k = s === 'day' ? 'FUT' : 'FUTN'; mergeTicks(k, sess.ticks); saveTicks();
         }
       }
-    } catch (e) {}
+    } catch (e) { console.warn('台指期備援失敗', e); }
     if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); const html = futCard(); const grid = document.querySelector('#tab-live .qgrid.idx'); if (old && html) { const t = document.createElement('div'); t.innerHTML = html; if (t.firstElementChild.outerHTML !== old.outerHTML) { old.replaceWith(t.firstElementChild); drawAllTL(t.firstElementChild); } } else if (!old && html && grid) { grid.insertAdjacentHTML('beforeend', html); drawAllTL(grid); } }
   }
   function futCard() {
@@ -543,6 +556,7 @@
       if (j._nightDate) LIVE.tlNightDate = j._nightDate;
       try { const cn = await cnyesFut(); const today = tlKey().slice(3); const wantN = LIVE.tlNightDate || (tpeNow().getHours() < 12 ? null : today);
         if (cn.day.date === today && cn.day.ticks.length) { const n0 = (LIVE.ticks.FUT || []).length; mergeTicks('FUT', cn.day.ticks); if ((LIVE.ticks.FUT || []).length !== n0) changed = true; }
+        else if (futSession() === 'night') { const sd = tpeNow().getHours() < 12 ? (LIVE.tlNightDate || null) : today; const fd = await futDayFile(sd); if (fd && fd.ticks && fd.ticks.length) { const n0 = (LIVE.ticks.FUT || []).length; mergeTicks('FUT', fd.ticks); if ((LIVE.ticks.FUT || []).length !== n0) changed = true; } }
         if (cn.night.ticks.length && (!wantN || cn.night.date === wantN || cn.night.date === today)) { const n0 = (LIVE.ticks.FUTN || []).length; mergeTicks('FUTN', cn.night.ticks); LIVE.tlNightDate = cn.night.date; if ((LIVE.ticks.FUTN || []).length !== n0) changed = true; } } catch (e) {}
       if (changed) { saveTicks(); if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); if (old) drawAllTL(old); } if (!$('#chart').hidden && K.period === 'T') drawChart(); }
     } catch (e) {}
