@@ -1,0 +1,9 @@
+name: probe4
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for R in "from=1794203400&to=1794184800" "from=1793944200&to=1793942400" "from=1794184800&to=1794203400"; do echo "=== $R"; curl -sS -m 20 -A Mozilla/5.0 -H 'Origin: https://nc-ai-bot.github.io' "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&$R" | python3 -c "
+          import json,sys,datetime;d=json.load(sys.stdin);dd=d.get('data') or {};t=dd.get('t') or [];print('status',d.get('statusCode'),'n',len(t),'s',dd.get('s'));print([datetime.datetime.fromtimestamp(x+28800,datetime.UTC).strftime('%d %H:%M') for x in sorted(t)[:2]+sorted(t)[-2:]] if t else json.dumps(d)[:300])"; done
