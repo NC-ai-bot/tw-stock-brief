@@ -93,6 +93,49 @@
     if (e.target.closest('#clnew')) { go('today'); const el = $('#changelog'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     if (e.target.closest('#changelog')) { try { localStorage.setItem('cl-seen', clLatest()); } catch (err) {} clBadge(); const dot = document.querySelector('#changelog .newdot'); if (dot) dot.remove(); }
   });
+  // ---------- 美股四大指數（鉅亨，瀏覽器直接抓；美股盤中每 60 秒更新，收盤後顯示最後一個交易日） ----------
+  const US = { list: [['GI:DJI:INDEX', '道瓊工業'], ['GI:INX:INDEX', 'S&P 500'], ['GI:IXIC:INDEX', 'NASDAQ'], ['GI:SOX:INDEX', '費城半導體']], data: {}, at: 0, busy: false };
+  try { US.data = JSON.parse(localStorage.getItem('us-idx') || '{}') || {}; } catch (e) { US.data = {}; }
+  function usSection() { return `<section class="sec plain us"><h2>美股四大指數<span class="cnt usnote"></span></h2><div class="usgrid"></div></section>`; }
+  function usSpark(pts, prev, up) {
+    if (!pts || pts.length < 2) return '';
+    const W = 160, H = 44; let lo = Math.min(prev, ...pts), hi = Math.max(prev, ...pts); if (hi === lo) hi = lo + 1;
+    const x = i => (i / (pts.length - 1)) * W, y = v => H - 2 - (v - lo) / (hi - lo) * (H - 4);
+    const line = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(''); const col = up ? 'var(--up)' : 'var(--down)';
+    return `<svg class="usspark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${line}L${W} ${H}L0 ${H}Z" fill="${col}" opacity=".14"/><path d="${line}" fill="none" stroke="${col}" stroke-width="1.5"/><line x1="0" x2="${W}" y1="${y(prev).toFixed(1)}" y2="${y(prev).toFixed(1)}" stroke="var(--muted)" stroke-width=".6" stroke-dasharray="3 3"/></svg>`;
+  }
+  function usRender() {
+    const has = US.list.some(([k]) => US.data[k]);
+    const html = has ? US.list.map(([k, name]) => { const d = US.data[k]; if (!d) return `<div class="uscard"><small>${name}</small><b>—</b></div>`; const c = cls(d.chg);
+      return `<div class="uscard"><small>${name}${d.trading ? '<i class="lv">盤中</i>' : ''}</small><b class="${c}">${d.last.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b><em class="${c}">${d.chg >= 0 ? '▲' : '▼'} ${Math.abs(d.chg).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}（${pct(d.pct)}）</em>${usSpark(d.pts, d.prev, d.chg >= 0)}</div>`; }).join('') : '<p class="empty">讀取中…</p>';
+    const any = US.list.map(([k]) => US.data[k]).find(Boolean);
+    const note = any ? `${any.day || ''}${any.trading ? '・盤中' : ' 收盤'}・鉅亨` : '';
+    document.querySelectorAll('.usgrid').forEach(el => { el.innerHTML = html; }); document.querySelectorAll('.usnote').forEach(el => { el.textContent = note; });
+  }
+  async function usLoad(force) {
+    if (US.busy || document.visibilityState !== 'visible' || !document.querySelector('.usgrid')) return;
+    const trading = Object.values(US.data).some(d => d && d.trading);
+    if (!force && Date.now() - US.at < (trading ? 60000 : 600000)) { usRender(); return; }
+    US.busy = true; US.at = Date.now();
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      await Promise.all(US.list.map(async ([k]) => {
+        try {
+          const r = await fetch(`https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=${k}&resolution=5&quote=1&from=${now}&to=${now - 4 * 86400}`, { cache: 'no-store' }); if (!r.ok) return;
+          const d = ((await r.json()) || {}).data || {}; const q = d.quote || {}; if (q['6'] == null) return;
+          const rows = (d.t || []).map((t, i) => [t, d.c[i]]).filter(x => x[1] != null).sort((a, b) => a[0] - b[0]);
+          const lastT = rows.length ? rows[rows.length - 1][0] : null; const dayOf = t => new Date((t - 5 * 3600) * 1000).toISOString().slice(0, 10); // 以美東日期切出最後一個交易日
+          const pts = lastT ? rows.filter(x => dayOf(x[0]) === dayOf(lastT)).map(x => x[1]) : [];
+          const dd = lastT ? dayOf(lastT) : ''; 
+          US.data[k] = { last: q['6'], chg: q['11'], pct: q['56'], prev: q['21'], trading: !!q.isTrading, pts, day: dd ? `${+dd.slice(5, 7)}/${+dd.slice(8, 10)}` : '' };
+        } catch (e) {}
+      }));
+      try { localStorage.setItem('us-idx', JSON.stringify(US.data)); } catch (e) {}
+    } finally { US.busy = false; }
+    usRender();
+  }
+  setInterval(() => usLoad(false), 30000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') usLoad(false); });
   function renderToday() {
     const el = $('#tab-today');
     const po = D.pool_out, ma = D.market_analysis || {};
@@ -100,6 +143,7 @@
     let h = '';
     const lead = (ma.summary || []).concat();
     if (lead.length) h += `<section class="sec plain"><h2>盤勢重點</h2><div class="body"><ul class="lead">${lead.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div></section>`;
+    h += usSection();
 
     const news = po.new || [];
     let body;
@@ -138,7 +182,7 @@
       <a class="btn" href="${WEB}" target="_blank" rel="noopener">晨報網頁版</a></div>
       ${(D.meta && D.meta.notes || []).length ? `<details style="margin-top:8px"><summary>備註<span class="am">${D.meta.notes.length} 則</span></summary><ul class="lead note">${D.meta.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>` : ''}</div></section>`;
     h += changelogSection();
-    el.innerHTML = h;
+    el.innerHTML = h; usRender(); usLoad(false);
   }
 
   function pick(x) {
@@ -408,6 +452,7 @@
     const idx = q.index || {};
     const ik = [['t00', 'TSE01'], ['o00', 'OTC01']].filter(([k]) => idx[k]);
     if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}${futCard()}</div>`;
+    h += usSection();
     h += mySection();
     const groups = LGROUPS;
     let any = false;
@@ -421,7 +466,7 @@
     if (it.some(x => x.est)) h += '<p class="note" style="margin:0">* 尚無成交，以買一／賣一估計。</p>';
     h += searchBox();
     h += `<section class="sec plain"><h2>伺服器狀態</h2><div class="body"><pre id="svstat" class="svstat">讀取中…</pre><p class="note">即時報價中繼（Cloudflare Worker）的版本與排程狀態：last_cron＝盤中每分鐘分時、last_morning＝晨報出刊推播、last_night＝台指期夜盤分時；沒有 last_night 代表夜盤排程沒在跑。</p></div></section>`;
-    el.innerHTML = h;
+    el.innerHTML = h; usRender(); usLoad(false);
     drawAllTL(el);
     loadStatus();
   }

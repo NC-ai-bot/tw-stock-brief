@@ -349,3 +349,11 @@ canvas.tl{display:block;width:100%;height:120px}
 .tarow .tabar{grid-column:1/4;display:block;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
 .tarow .tabar b{display:block;height:100%}
 .tanote{font-size:.74rem;color:var(--muted);padding:2px 0 4px 8px;border-left:2px solid var(--line)}
+/* 美股四大指數 */
+.usgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.uscard{background:var(--paper);border-radius:var(--r);padding:10px 12px 6px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.uscard small{color:var(--muted);font-size:.78rem}
+.uscard b{font-size:1.15rem;font-variant-numeric:tabular-nums}
+.uscard em{font-style:normal;font-size:.76rem;font-variant-numeric:tabular-nums}
+.uscard .lv{font-style:normal;font-size:.66rem;margin-left:4px;padding:0 5px;border-radius:7px;background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1)}
+.usspark{width:100%;height:44px;margin-top:4px;display:block}
