@@ -1,0 +1,21 @@
+name: fut_day
+on:
+  schedule:
+    - cron: '55 5 * * 1-5'   # 13:55 台北
+    - cron: '25 6 * * 1-5'   # 14:25 台北（排程常延遲，兩次保險）
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: { group: fut_day, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: claude/morning-report-migration-74bldm }
+      - name: 抓台指期日盤收盤
+        run: python3 tools/fut_day.py docs
+      - name: commit
+        run: |
+          git config user.name "盤中報價"; git config user.email "noreply@anthropic.com"
+          git add docs/data/fut && (git diff --cached --quiet && echo "no change" || (git commit -m "台指期日盤 $(TZ=Asia/Taipei date +%m/%d)" && git pull --rebase origin claude/morning-report-migration-74bldm && git push origin HEAD:claude/morning-report-migration-74bldm))
