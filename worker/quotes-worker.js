@@ -103,6 +103,55 @@ async function taifex(marketType) {
   return { spot: spot ? conv(spot) : null, near: near ? conv(near) : null };
 }
 
+// ---------- 台指期備援來源（期交所行情網站會對 Cloudflare 回 520；GitHub 上測過 Yahoo 股市與鉅亨都正常） ----------
+const UA_BROWSER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+/** 台北時間的期貨時段：day 08:45–13:45、night 15:00–05:00；空檔歸到剛結束的那一節 */
+function futSessionNow() {
+  const t = tpe(); const hm = t.getUTCHours() * 60 + t.getUTCMinutes();
+  if (hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) return 'day';
+  if (hm > 13 * 60 + 45 && hm < 15 * 60) return 'day';
+  return 'night';
+}
+/** Yahoo 股市 台指期近一（WTX&）：日盤／夜盤同一個代號，依現在時間歸到哪一節 */
+async function yahooFut() {
+  const r = await fetch('https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=WTX%26?bkt=&device=desktop&lang=zh-TW&region=TW', { headers: { 'user-agent': UA_BROWSER, 'accept': 'application/json, text/plain, */*', 'accept-language': 'zh-TW,zh;q=0.9', 'referer': 'https://tw.stock.yahoo.com/future/' }, cf: { cacheTtl: 0 } });
+  if (!r.ok) throw new Error('YAHOO ' + r.status);
+  const j = await r.json(); const x = Array.isArray(j) ? j.find(q => q.symbol === 'WTX&') || j[0] : null;
+  if (!x || !x.price) throw new Error('YAHOO empty');
+  const n = v => { if (v == null) return null; const f = parseFloat(String(typeof v === 'object' ? v.raw : v).replace(/[,%]/g, '')); return isNaN(f) ? null : f; };
+  const ts = x.regularMarketTime ? new Date(x.regularMarketTime) : new Date(); const tp = new Date(ts.getTime() + 8 * 3600000);
+  const ob = (x.orderbook || [])[0] || {};
+  return { sym: 'WTX&', name: '台指期近一', last: n(x.price), ref: n(x.regularMarketPreviousClose), chg: n(x.change), pct: n(x.changePercent), open: n(x.regularMarketOpen), high: n(x.regularMarketDayHigh), low: n(x.regularMarketDayLow), vol: n(x.volume), oi: n(x.openInterest), bid: n(ob.bid != null ? ob.bid : x.bid), ask: n(ob.ask != null ? ob.ask : x.ask), bidv: n(ob.bidVol), askv: n(ob.askVol), date: tp.toISOString().slice(0, 10).replace(/-/g, ''), time: tp.toISOString().slice(11, 19), status: '', src: 'yahoo' };
+}
+/** 鉅亨 台指期連續月 1 分 K → 日盤／夜盤分時 [[HH:MM:00, 收盤價, 累計量], ...]，近 16 小時 */
+async function cnyesFutTicks() {
+  const now = Math.floor(Date.now() / 1000);
+  const r = await fetch(`https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=${now}&to=${now - 16 * 3600}`, { headers: { 'user-agent': UA_BROWSER, 'accept': 'application/json', 'referer': 'https://www.cnyes.com/' }, cf: { cacheTtl: 0 } });
+  if (!r.ok) throw new Error('CNYES ' + r.status);
+  const d = ((await r.json()) || {}).data || {}; const T = d.t || [];
+  const rows = T.map((t, i) => ({ t, c: d.c[i], v: d.v[i] || 0 })).filter(x => x.c != null).sort((a, b) => a.t - b.t);
+  const out = { day: { date: null, ticks: [] }, night: { date: null, ticks: [] } };
+  let cumD = 0, cumN = 0;
+  rows.forEach(x => {
+    const tp = new Date((x.t + 60) * 1000 + 8 * 3600000); // 1 分 K 的結束時間
+    const hh = tp.getUTCHours(), mm = tp.getUTCMinutes(), hm = hh * 60 + mm; const dateStr = tp.toISOString().slice(0, 10).replace(/-/g, '');
+    const stamp = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
+    if (hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) { if (out.day.date !== dateStr) { out.day = { date: dateStr, ticks: [] }; cumD = 0; } cumD += x.v; out.day.ticks.push([stamp, x.c, cumD]); }
+    else if (hm >= 15 * 60 || hm <= 5 * 60) { const nd = hm <= 5 * 60 ? new Date(tp.getTime() - 86400000).toISOString().slice(0, 10).replace(/-/g, '') : dateStr; if (out.night.date !== nd) { out.night = { date: nd, ticks: [] }; cumN = 0; } cumN += x.v; out.night.ticks.push([stamp, x.c, cumN]); }
+  });
+  return out;
+}
+/** 鉅亨分時（快取 60 秒） */
+async function cnyesFutTicksCached() {
+  const key = new Request('https://cache.local/cnyes-fut'); const cache = caches.default;
+  const hit = await cache.match(key); if (hit) return hit.json();
+  const v = await cnyesFutTicks();
+  await cache.put(key, new Response(JSON.stringify(v), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } }));
+  return v;
+}
+const nightSortKey = t => (t < '08' ? '2' : '1') + t;
+function mergeTicks(a, b, night) { const m = new Map(); (a || []).forEach(t => m.set(t[0], t)); (b || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const arr = [...m.values()]; return night ? arr.sort((x, y) => nightSortKey(x[0]) < nightSortKey(y[0]) ? -1 : 1) : arr.sort((x, y) => x[0] < y[0] ? -1 : 1); }
+
 // ---------- Web Push（RFC 8291 aes128gcm ＋ RFC 8292 VAPID；加解密已用 http_ece 驗證） ----------
 async function ensureVapid(kv) {
   let v = JSON.parse((await kv.get('vapid')) || 'null');
@@ -249,7 +298,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (u.pathname === '/') {
-      const st = { ok: true, ver: 12, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
+      const st = { ok: true, ver: 13, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
       if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); const nm = await env.TL.get('night-meta'); if (nm) st.last_night = JSON.parse(nm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
       return json(st);
     }
@@ -281,6 +330,15 @@ export default {
         if (d === tpeDate() && nightKeyDate() !== d) { const nr = JSON.parse((await env.TL.get('tl-' + nightKeyDate())) || '{}'); if (nr.FUTN) raw.FUTN = nr.FUTN; } // 凌晨查今天：夜盤還掛在昨天
         if (!raw.FUTN) { for (let i = 1; i <= 10 && !raw.FUTN; i++) { const t = new Date(Date.parse(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}T00:00:00Z`)); t.setUTCDate(t.getUTCDate() - i); const pr = JSON.parse((await env.TL.get('tl-' + t.toISOString().slice(0, 10).replace(/-/g, ''))) || '{}'); if (pr.FUTN) { raw.FUTN = pr.FUTN; raw._nightDate = t.toISOString().slice(0, 10).replace(/-/g, ''); } } } // 當天夜盤還沒開始：給上一個夜盤
       }
+      // 台指期分時補齊：鉅亨 1 分 K（日盤 FUT 對 d；夜盤 FUTN 對 d 這一天開始的夜盤，或凌晨查前一天開始的那一節）
+      if (!want.length || want.includes('FUT') || want.includes('FUTN')) {
+        try {
+          const cn = await cnyesFutTicksCached();
+          if (cn.day.date === d && cn.day.ticks.length) raw.FUT = mergeTicks(raw.FUT, cn.day.ticks, false);
+          const nightDates = [d, nightKeyDate()];
+          if (cn.night.ticks.length && nightDates.includes(cn.night.date)) { raw.FUTN = mergeTicks(raw.FUTN, cn.night.ticks, true); raw._nightDate = cn.night.date; }
+        } catch (e) {}
+      }
       const out = want.length ? Object.fromEntries(want.filter(c => raw[c]).map(c => [c, raw[c]])) : raw;
       if (Object.keys(raw).some(k => !k.startsWith('_'))) out._date = d; if (raw._nightDate) out._nightDate = raw._nightDate; // 沒資料就不帶日期
       return json(out, 200, { 'cache-control': 'public, max-age=20' });
@@ -291,7 +349,12 @@ export default {
       // 日盤與夜盤各自抓，一邊失敗不影響另一邊（以前用 Promise.all，期交所任一邊出錯整張卡就消失）
       const [rd, rn] = await Promise.allSettled([taifex('0'), taifex('1')]);
       let day = rd.status === 'fulfilled' ? rd.value : null, night = rn.status === 'fulfilled' ? rn.value : null;
-      const err = [rd, rn].filter(x => x.status === 'rejected').map(x => String(x.reason)).join('；') || undefined;
+      let err = [rd, rn].filter(x => x.status === 'rejected').map(x => String(x.reason)).join('；') || undefined;
+      // 期交所失敗 → 現在進行中的那一節改用 Yahoo 股市（另一節用 KV 最後一筆頂著）
+      const sess = futSessionNow();
+      if ((sess === 'day' && !day) || (sess === 'night' && !night) || (sess === 'night' && night && !night.near)) {
+        try { const y = await yahooFut(); const spot = day && day.spot ? day.spot : null; if (sess === 'day') day = { spot, near: y, src: 'yahoo' }; else night = { spot, near: y, src: 'yahoo' }; err = (err ? err + '；' : '') + '改用 Yahoo'; } catch (e) { err = (err ? err + '；' : '') + String(e && e.message || e); }
+      }
       // 成功的存成最後一筆（KV，保留 2 天）；失敗的拿最後一筆頂著並標 stale，讓 app 的卡片還在、並註明是幾點的資料
       if (env.TL) {
         const now = Date.now();
@@ -342,13 +405,14 @@ export default {
     }
     // ---- 夜盤：每 2 分鐘存台指期夜盤分時 ----
     if (cron.startsWith('*/2 7-21')) {
-      let n; try { n = (await taifex('1')).near; } catch (e) { return; }
-      if (!n || n.last == null || !n.time) return;
+      let n = null, src = 'taifex'; try { n = (await taifex('1')).near; } catch (e) { try { n = await yahooFut(); src = 'yahoo'; } catch (e2) { n = null; } }
       const key = 'tl-' + nightKeyDate();
       const cur = JSON.parse((await env.TL.get(key)) || '{}');
-      const arr = cur.FUTN = cur.FUTN || [];
-      if (!arr.length || arr[arr.length - 1][0] !== n.time) { arr.push([n.time, n.last, n.vol]); await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 }); }
-      await env.TL.put('night-meta', JSON.stringify({ at: new Date().toISOString(), key, n: arr.length }), { expirationTtl: 86400 * 10 });
+      let arr = cur.FUTN = cur.FUTN || [];
+      if (n && n.last != null && n.time) { const stamp = n.time.slice(0, 5) + ':00'; const L = arr[arr.length - 1]; if (!L || nightSortKey(L[0]) < nightSortKey(stamp)) arr.push([stamp, n.last, n.vol]); }
+      try { const cn = await cnyesFutTicks(); if (cn.night.date === nightKeyDate() && cn.night.ticks.length) { arr = cur.FUTN = mergeTicks(arr, cn.night.ticks, true); src += '+cnyes'; } } catch (e) {}
+      await env.TL.put(key, JSON.stringify(cur), { expirationTtl: 86400 * 10 });
+      await env.TL.put('night-meta', JSON.stringify({ at: new Date().toISOString(), key, n: arr.length, src }), { expirationTtl: 86400 * 10 });
       return;
     }
     // ---- 盤中：每分鐘 ----
