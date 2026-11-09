@@ -189,25 +189,40 @@
   const FUT = { data: null, at: 0, ok: null };
   function futSession() { const t = tpeNow(), hm = t.getHours() * 60 + t.getMinutes(), wd = t.getDay(); const wk = wd >= 1 && wd <= 5; if (wk && hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) return 'day'; if ((wk && hm >= 15 * 60) || (hm < 5 * 60 && wd >= 2 && wd <= 6)) return 'night'; return null; }
   function futShow() { const s = futSession(); if (s) return s; const hm = tpeNow().getHours() * 60 + tpeNow().getMinutes(); return hm > 13 * 60 + 45 && hm < 15 * 60 ? 'day' : 'night'; }
-  // 鉅亨 台指期連續月 1 分 K → 日盤／夜盤分時（與 Worker 同一套切法）
-  async function cnyesFut() {
-    const now = Math.floor(Date.now() / 1000);
-    const r = await fetch(`https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=${now}&to=${now - 16 * 3600}`, { cache: 'no-store' });
+  // 鉅亨 台指期連續月 1 分 K → 日盤／夜盤分時。鉅亨一次最多回約 630 根，所以分段抓：目前這一節（兩段）＋當天日盤＋前一個交易日的日盤（當參考價用）
+  async function cnyesRange(from, to) {
+    const r = await fetch(`https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=${from}&to=${to}`, { cache: 'no-store' });
     if (!r.ok) throw new Error('cnyes ' + r.status);
     const d = ((await r.json()) || {}).data || {}; const T = d.t || [];
-    const rows = T.map((t, i) => ({ t, o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: d.v[i] || 0 })).filter(x => x.c != null).sort((a, b) => a.t - b.t);
+    return T.map((t, i) => ({ t, o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: d.v[i] || 0 })).filter(x => x.c != null);
+  }
+  async function cnyesFut() {
+    const now = Math.floor(Date.now() / 1000); const tp = tpeNow();
+    const dayUTC = (dt, h, m) => Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate(), h - 8, m) / 1000; // 台北 h:m → UTC 秒
+    const ranges = [[now, now - 5.5 * 3600], [now - 5.5 * 3600, now - 11 * 3600]];
+    const hm = tp.getHours() * 60 + tp.getMinutes();
+    const sessDay = new Date(tp); if (hm < 5 * 60 + 10) sessDay.setDate(sessDay.getDate() - 1); // 凌晨看的是前一天開始的夜盤，日盤也是前一天的
+    ranges.push([dayUTC(sessDay, 13, 50), dayUTC(sessDay, 8, 40)]);
+    const prevDay = new Date(sessDay); do { prevDay.setDate(prevDay.getDate() - 1); } while (prevDay.getDay() === 0 || prevDay.getDay() === 6);
+    ranges.push([dayUTC(prevDay, 13, 50), dayUTC(prevDay, 13, 20)]);
+    const parts = await Promise.all(ranges.map(([f, t]) => cnyesRange(f, t).catch(() => [])));
+    const seen = new Set(); const rows = [].concat(...parts).filter(x => !seen.has(x.t) && seen.add(x.t)).sort((a, b) => a.t - b.t);
     const mk = () => ({ date: null, ticks: [], o: null, h: null, l: null });
-    const out = { day: mk(), night: mk() }; let cum = { day: 0, night: 0 };
+    const days = {}, nights = {};
     rows.forEach(x => {
-      const tp = new Date((x.t + 60) * 1000 + 8 * 3600000); const hh = tp.getUTCHours(), mm = tp.getUTCMinutes(), hm = hh * 60 + mm;
-      const ds = tp.toISOString().slice(0, 10).replace(/-/g, ''); const stamp = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
-      let k = null, date = ds;
-      if (hm >= 8 * 60 + 45 && hm <= 13 * 60 + 45) k = 'day'; else if (hm >= 15 * 60 || hm <= 5 * 60) { k = 'night'; if (hm <= 5 * 60) date = new Date(tp.getTime() - 86400000).toISOString().slice(0, 10).replace(/-/g, ''); }
-      if (!k) return; const o = out[k];
-      if (o.date !== date) { out[k] = mk(); out[k].date = date; out[k].o = x.o; cum[k] = 0; }
-      const q = out[k]; cum[k] += x.v; q.h = q.h == null ? x.h : Math.max(q.h, x.h); q.l = q.l == null ? x.l : Math.min(q.l, x.l); q.ticks.push([stamp, x.c, cum[k]]);
+      const te = new Date((x.t + 60) * 1000 + 8 * 3600000); const hh = te.getUTCHours(), mm = te.getUTCMinutes(), m = hh * 60 + mm;
+      let ds = te.toISOString().slice(0, 10).replace(/-/g, ''); const stamp = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
+      let bucket = null;
+      if (m >= 8 * 60 + 45 && m <= 13 * 60 + 45) bucket = days; else if (m >= 15 * 60 || m <= 5 * 60) { bucket = nights; if (m <= 5 * 60) ds = new Date(te.getTime() - 86400000).toISOString().slice(0, 10).replace(/-/g, ''); }
+      if (!bucket) return;
+      const q = bucket[ds] = bucket[ds] || Object.assign(mk(), { date: ds, cum: 0, o: x.o });
+      q.cum += x.v; q.h = q.h == null ? x.h : Math.max(q.h, x.h); q.l = q.l == null ? x.l : Math.min(q.l, x.l); q.ticks.push([stamp, x.c, q.cum]);
     });
-    return out;
+    const sd = `${sessDay.getFullYear()}${String(sessDay.getMonth() + 1).padStart(2, '0')}${String(sessDay.getDate()).padStart(2, '0')}`;
+    const pd = `${prevDay.getFullYear()}${String(prevDay.getMonth() + 1).padStart(2, '0')}${String(prevDay.getDate()).padStart(2, '0')}`;
+    const day = days[sd] || mk(), night = nights[sd] || Object.values(nights).sort((a, b) => a.date < b.date ? 1 : -1)[0] || mk();
+    const prev = days[pd]; const prevDayLast = prev && prev.ticks.length ? prev.ticks[prev.ticks.length - 1][1] : null;
+    return { day, night, prevDayLast };
   }
   async function futPoll() {
     if (document.visibilityState !== 'visible') return;
@@ -225,7 +240,7 @@
         const sess = cn[s]; const today = tlKey().slice(3);
         if (sess && sess.ticks.length && (s === 'day' ? sess.date === today : true)) {
           const prevNear = cur && cur.near; const dayLast = cn.day.ticks.length ? cn.day.ticks[cn.day.ticks.length - 1][1] : null;
-          const ref = s === 'night' ? (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null) : ((prevNear && prevNear.ref) || null);
+          const ref = s === 'night' ? (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null) : ((prevNear && prevNear.ref) || cn.prevDayLast || null);
           const last = sess.ticks[sess.ticks.length - 1][1];
           const near = { sym: 'TXF', name: '台指期近月', last, ref, chg: ref != null ? last - ref : null, pct: ref ? (last / ref - 1) * 100 : null, open: sess.o, high: sess.h, low: sess.l, vol: sess.ticks[sess.ticks.length - 1][2], bid: null, ask: null, date: sess.date, time: sess.ticks[sess.ticks.length - 1][0], src: 'cnyes' };
           FUT.data = FUT.data || {}; FUT.data[s] = { spot: cur && cur.spot || null, near, src: 'cnyes' }; FUT.ok = true;
@@ -308,7 +323,7 @@
     const item = isFut ? (FUT.data && FUT.data[code === 'FUT' ? 'day' : 'night'] && FUT.data[code === 'FUT' ? 'day' : 'night'].near) : code === 'TSE01' ? (D.quotes.index || {}).t00 : code === 'OTC01' ? (D.quotes.index || {}).o00 : (D.quotes.items || []).find(i => i.code === code);
     const ticks = (LIVE.ticks[code] || []).filter(t => isFinite(t[1]) && t[1] > 0); // 伺服器舊版在漲停（賣方五檔 '-'）時存過 null 的分時，畫圖時略過
     if (!ticks.length && item && item.last != null && item.time) ticks.push([item.time, item.last]);
-    const prev = item && (isFut ? item.ref : item.prev); if (!prev) return;
+    let prev = item && (isFut ? item.ref : item.prev); const noRef = !prev; if (!prev) { if (!ticks.length) return; prev = isFut && item && item.open ? item.open : ticks[0][1]; } // 沒有參考價（例如鉅亨備援）時以開盤價當基準，不留白
     const padL = 4, padR = 44, padT = 8, padB = 16, pw = W - padL - padR, ph = H - padT - padB;
     const S = SESS[code === 'FUT' ? 'futday' : code === 'FUTN' ? 'futnight' : 'stock'];
     const tmin = S.tmin, tmax = S.tmax;
