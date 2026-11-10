@@ -11,12 +11,12 @@
     "ST",
     null
    ],
-   "stop_now": 20.29,
-   "days": 5,
-   "last": 21.75,
-   "ret": 5.33,
-   "prev_close": 21.75,
-   "stop_dist": 7.2,
+   "stop_now": 20.45,
+   "days": 6,
+   "last": 22.8,
+   "ret": 10.41,
+   "prev_close": 22.8,
+   "stop_dist": 11.49,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -35,12 +35,12 @@
     "ST",
     null
    ],
-   "stop_now": 305.9,
-   "days": 2,
-   "last": 356.0,
-   "ret": 10.39,
-   "prev_close": 356.0,
-   "stop_dist": 16.38,
+   "stop_now": 311.04,
+   "days": 3,
+   "last": 348.5,
+   "ret": 8.06,
+   "prev_close": 348.5,
+   "stop_dist": 12.04,
    "ref": 339.5,
    "cap": 344.59,
    "lot": 339500,
@@ -60,17 +60,39 @@
     null
    ],
    "stop_now": 65.92,
-   "days": 1,
-   "last": 68.1,
-   "ret": -2.16,
-   "prev_close": 68.1,
-   "stop_dist": 3.31,
+   "days": 2,
+   "last": 67.8,
+   "ret": -2.59,
+   "prev_close": 67.8,
+   "stop_dist": 2.85,
    "ref": 69.6,
    "cap": 70.77,
    "lot": 69600,
    "status": "filled",
    "fill_date": "2026-11-09",
    "fill_how": "開盤"
+  },
+  {
+   "code": "2645",
+   "name": "長榮航太",
+   "sector": "航太維修",
+   "group": "回檔站回",
+   "entry_date": "2026-11-10",
+   "entry": 163.5,
+   "stop": [
+    "ST",
+    null
+   ],
+   "stop_now": 144.31,
+   "days": 0,
+   "last": 163.5,
+   "ret": 0.0,
+   "prev_close": null,
+   "stop_dist": 13.3,
+   "ref": 163.5,
+   "cap": 166.38,
+   "lot": 163500,
+   "status": "pending"
   }
  ],
  "closed": [
@@ -363,6 +385,12 @@
   {
    "date": "2026-11-09",
    "eq": 0.900012,
+   "n": 3,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-10",
+   "eq": 0.902064,
    "n": 3,
    "acct": "slot"
   }
