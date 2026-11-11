@@ -14,7 +14,7 @@
   const WEB = 'https://claude.ai/artifact/WV3mXs9MbnsLWQxFYjcaHQ';
 
   const D = {};
-  const FILES = ['meta', 'market', 'market_analysis', 'pool_out', 'pool', 'history', 'archive', 'i1', 'ext', 'quotes', 'changelog'];
+  const FILES = ['meta', 'market', 'market_analysis', 'pool_out', 'pool', 'history', 'archive', 'i1', 'j1b', 'ext', 'quotes', 'changelog'];
 
   async function load(force) {
     const res = await Promise.all(FILES.map(async f => {
@@ -818,6 +818,25 @@
     const el = $('#tab-lab');
     const i1 = D.i1, ext = D.ext;
     let h = `<p class="note" style="margin:0">這一頁是「只記錄、不納入觀察池」的測試名單，用來跟 W4 比成績，不是建議買的名單。</p>`;
+    const j1 = D.j1b;
+    if (j1) {
+      const st = j1.stats || {}, g = j1.gate || {};
+      const tagOf = x => x.tag ? `<i class="jtag ${x.tag === 'I1' ? 'a' : 'b'}">${esc(x.tag)}</i>` : '';
+      const row = x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}${tagOf(x)}</span><span class="num ${cls(x.ret)}">${x.ret != null ? pct(x.ret) : ''}</span>
+        <span class="sub">${x.exit_date ? `${md(x.entry_date)} → ${md(x.exit_date)}・${x.days} 天・${x.why === 'hard' ? '強制停損' : '跌破出場線'}` : `${x.ref != null ? `參考 ${fmt(x.ref)}` : x.entry != null ? `進場 ${fmt(x.entry)}` : ''}${x.cap != null ? `・上限 ${fmt(x.cap)}` : ''}${x.last != null && x.ref == null ? ` → ${fmt(x.last)}` : ''}${x.stop_now != null ? `・出場線 ${fmt(x.stop_now)}` : ''}${x.w != null ? `・權重 ${(x.w * 100).toFixed(0)}%` : ''}${x.days != null ? `・${x.days} 天` : ''}`}</span></div>`;
+      h += `<section class="sec w4"><h2>J1b 混合模型<span class="cnt">I1 為主＋急跌反彈閘門・資料日 ${md(j1.date)}</span></h2><div class="body">
+        <p class="note" style="margin-top:0"><b>目前模式：${esc(j1.mode || '')}</b>。加權 ${fmt(g.close)}、季線 ${fmt(g.ma60)}、5 日線 ${fmt(g.ma5)}；近 10 日對月線乖離最低 ${pct(g.minb, 1)}（低於 −7% 且站上 5 日線才開閘門）。</p>
+        <h3>今日新增<span class="cnt">隔天依上限買</span></h3>${(j1.new || []).length ? j1.new.map(row).join('') : '<p class="empty">無</p>'}
+        ${(j1.exits || []).length ? `<h3 style="margin-top:10px">今日出場<span class="cnt">隔天開盤賣</span></h3>${j1.exits.map(row).join('')}` : ''}
+        <h3 style="margin-top:10px">模擬持股<span class="cnt">${(j1.holding || []).length} 檔・占資金 ${st.expo != null ? st.expo : '—'}%</span></h3>${(j1.holding || []).length ? j1.holding.map(row).join('') : '<p class="empty">無</p>'}
+        <div class="stats" style="margin-top:10px">
+          <div><span class="k">${md(st.start)} 起累積</span><span class="v ${cls(st.cum)}">${pct(st.cum)}</span></div>
+          <div><span class="k">同期 0050</span><span class="v ${cls(st.bench)}">${pct(st.bench)}</span></div>
+          <div><span class="k">已結算</span><span class="v">${st.closed || 0} 筆</span></div></div>
+        ${(j1.closed || []).length ? `<details style="margin-top:8px"><summary>最近結算的 ${j1.closed.length} 筆（含追蹤前的回測）</summary>${j1.closed.map(row).join('')}</details>` : ''}
+        ${j1.backtest ? `<p class="note">${esc(j1.backtest)}</p>` : ''}
+        <p class="note">持股是接續回測的部位（不是從空手開始），${md(st.start)} 起紙上追蹤；每晚更新，只記錄、不納入觀察池。</p></div></section>`;
+    }
     if (i1) {
       const st = i1.stats || {};
       const row = x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${x.ret != null ? pct(x.ret) : ''}</span>
@@ -841,7 +860,7 @@
         ${(ext.opens || []).length ? `<details style="margin-top:8px"><summary>模擬持有<span class="am">${ext.opens.length} 檔・平均 ${pct(st.open_avg)}</span></summary>${ext.opens.map(x => `<div class="stock" data-k="${esc(x.code)}"><span class="code">${esc(x.code)}</span><span class="name">${esc(x.name)}</span><span class="num ${cls(x.ret)}">${pct(x.ret)}</span><span class="sub">${md(x.date)} 進場 ${fmt(x.entry)} → ${fmt(x.last)}・${x.days} 天</span></div>`).join('')}</details>` : ''}
         <p class="note">已結算 ${st.closed || 0} 筆、平均 ${pct(st.avg)}。${esc(ext.backtest || '')}</p></div></section>`;
     }
-    if (!i1 && !ext) h += '<p class="empty">尚無測試資料。</p>';
+    if (!i1 && !ext && !j1) h += '<p class="empty">尚無測試資料。</p>';
     el.innerHTML = h;
   }
 

@@ -357,3 +357,7 @@ canvas.tl{display:block;width:100%;height:120px}
 .uscard em{font-style:normal;font-size:.76rem;font-variant-numeric:tabular-nums}
 .uscard .lv{font-style:normal;font-size:.66rem;margin-left:4px;padding:0 5px;border-radius:7px;background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1)}
 .usspark{width:100%;height:44px;margin-top:4px;display:block}
+/* J1b 測試名單：袖套標籤 */
+.jtag{font-style:normal;font-size:.66rem;margin-left:6px;padding:0 5px;border-radius:7px;vertical-align:1px}
+.jtag.a{background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1)}
+.jtag.b{background:color-mix(in srgb,var(--w4) 18%,transparent);color:var(--w4)}
