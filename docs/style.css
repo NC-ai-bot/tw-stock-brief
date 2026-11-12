@@ -361,3 +361,20 @@ canvas.tl{display:block;width:100%;height:120px}
 .jtag{font-style:normal;font-size:.66rem;margin-left:6px;padding:0 5px;border-radius:7px;vertical-align:1px}
 .jtag.a{background:color-mix(in srgb,var(--i1) 16%,transparent);color:var(--i1)}
 .jtag.b{background:color-mix(in srgb,var(--w4) 18%,transparent);color:var(--w4)}
+/* 指數貢獻排行 */
+.ctseg{display:inline-flex;margin-bottom:8px}
+.ctseg button[aria-pressed="true"]{background:var(--support);color:#fff;font-weight:600}
+.cthead{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:.78rem;font-weight:600;margin-bottom:4px}
+.ctgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
+.ctc{position:relative;padding:6px 8px;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-variant-numeric:tabular-nums;min-width:0}
+.ctc.none{border-color:transparent}
+.ctc[data-k]{cursor:pointer}
+.ctc .ctr{position:relative;display:flex;justify-content:space-between;align-items:baseline;gap:6px;min-width:0}
+.ctc .ctbar{position:absolute;top:0;bottom:0;right:0;opacity:.13}
+.ctc.up .ctbar{background:var(--up)}.ctc.dn .ctbar{background:var(--down);right:auto;left:0}
+.ctc .ctn{font-size:.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ctc .ctp{font-size:.88rem;font-weight:700;flex:0 0 auto}
+.ctc.up .ctp,.ctc.up .ctx{color:var(--up)}.ctc.dn .ctp,.ctc.dn .ctx{color:var(--down)}
+.ctc .ctk{font-size:.7rem;color:var(--muted)}
+.ctc .ctx{font-size:.74rem;white-space:nowrap}
+.ctmore{margin-top:8px;font:inherit;font-size:.8rem;padding:4px 12px;border:1px solid var(--line);border-radius:8px;background:none;color:var(--muted);cursor:pointer}

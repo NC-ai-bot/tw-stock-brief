@@ -1,6 +1,6 @@
 """加權指數／櫃買指數成分股權重（給 app 的「指數貢獻排行」）。GitHub Actions 每個交易日開盤前與收盤後各跑一次。
 權重＝發行股數 × 最近收盤價 ÷ 全部加總（上市：證交所 openapi 公司基本資料＋STOCK_DAY_ALL；上櫃：櫃買 openapi 收盤行情的發行股數）。
-輸出 docs/data/weights.json：{date, tse:{n, cover, items:[[代號, 名稱, 權重%], ...前 150]}, otc:{... 前 100}}
+輸出 docs/data/weights.json：{date, tse:{n, cover, items:[[代號, 名稱, 權重%], ...前 150]}, otc:{... 前 150}}
 貢獻點數（app 端算）≈ 指數昨收 × 權重 × 個股漲跌幅。"""
 import json, os, re, sys, urllib.request
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36'
@@ -42,9 +42,9 @@ def pack(rows, top):
 
 def main(docs):
     out = {}
-    d1, r1 = tse(); out['tse'] = pack(r1, 150); out['tse']['date'] = d1
+    d1, r1 = tse(); out["tse"] = pack(r1, 150); out['tse']['date'] = d1
     try:
-        d2, r2 = otc(); out['otc'] = pack(r2, 100); out['otc']['date'] = d2
+        d2, r2 = otc(); out["otc"] = pack(r2, 150); out['otc']['date'] = d2
     except Exception as e:
         print('otc failed', e)
     out['date'] = d1

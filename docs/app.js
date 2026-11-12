@@ -136,6 +136,59 @@
   }
   setInterval(() => usLoad(false), 30000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') usLoad(false); });
+  // ---------- 指數貢獻排行（哪些股票把加權／櫃買指數拉上去或拖下來） ----------
+  // 貢獻點數 ≈ 指數昨收 × 個股權重 × 個股漲跌幅；權重來自 data/weights.json（發行股數 × 收盤價，GitHub Actions 每天更新），報價經 Worker 向證交所取前 149 大權值股。
+  const CT = { mkt: 'tse', w: null, wAt: 0, q: {}, at: {}, busy: false, more: false };
+  try { const m = localStorage.getItem('ct-mkt'); if (m === 'otc' || m === 'tse') CT.mkt = m; } catch (e) {}
+  function contribSection() {
+    return `<section class="sec plain ct"><h2>指數貢獻排行<span class="cnt ctnote"></span></h2><div class="body">
+      <div class="seg ctseg" role="group" aria-label="市場"><button type="button" data-ctm="tse" aria-pressed="${CT.mkt === 'tse'}">上市</button><button type="button" data-ctm="otc" aria-pressed="${CT.mkt === 'otc'}">上櫃</button></div>
+      <div class="ctbody"><p class="empty">讀取中…</p></div></div></section>`;
+  }
+  function contribRender() {
+    const box = document.querySelector('.ctbody'); if (!box) return;
+    const W = CT.w && CT.w[CT.mkt], Q = CT.q[CT.mkt];
+    if (!W) { box.innerHTML = `<p class="empty">${CT.w ? '還沒有權重資料。' : '讀取中…'}</p>`; return; }
+    if (!Q) { box.innerHTML = '<p class="empty">讀取報價中…</p>'; return; }
+    const idx = Q[CT.mkt === 'tse' ? 'TSE01' : 'OTC01']; const base = idx && idx.prev;
+    if (!base) { box.innerHTML = '<p class="empty">取不到指數報價，稍後再試。</p>'; return; }
+    const rows = []; let sum = 0, cover = 0;
+    W.items.forEach(([c, name, w]) => { const x = Q[c]; if (!x || x.last == null || !x.prev || x.est) return; const pts = base * w / 100 * (x.last / x.prev - 1); sum += pts; cover += w; rows.push({ c, name, w, pts, last: x.last, chg: x.last - x.prev }); });
+    const up = rows.filter(r => r.pts > 0).sort((a, b) => b.pts - a.pts), dn = rows.filter(r => r.pts < 0).sort((a, b) => a.pts - b.pts);
+    const n = CT.more ? 20 : 10, mx = Math.max(up.length ? up[0].pts : 0, dn.length ? -dn[0].pts : 0, 1e-9);
+    const px = v => v >= 1000 ? Math.round(v).toLocaleString('en-US') : String(+v.toFixed(2));
+    const cell = (r, i, side) => r ? `<div class="ctc ${side}"${LIVE.uni && LIVE.uni[r.c] ? ` data-k="${esc(r.c)}"` : ''}><i class="ctbar" style="width:${Math.max(2, Math.abs(r.pts) / mx * 100).toFixed(0)}%"></i>
+        <div class="ctr"><span class="ctn">${i + 1}.${esc(r.name)}</span><span class="ctp">${r.pts >= 0 ? '+' : ''}${r.pts.toFixed(2)}</span></div>
+        <div class="ctr"><span class="ctk">${esc(r.c)}</span><span class="ctx">${px(r.last)}（${r.chg >= 0 ? '▲' : '▼'}${px(Math.abs(r.chg))}）</span></div></div>` : '<div class="ctc none"></div>';
+    let h = `<div class="cthead"><span class="${cls(1)}">拉抬</span><span class="${cls(-1)}">拖累</span></div><div class="ctgrid">`;
+    for (let i = 0; i < n; i++) { if (!up[i] && !dn[i]) break; h += cell(up[i], i, 'up') + cell(dn[i], i, 'dn'); }
+    h += `</div><button type="button" class="ctmore" data-ctmore="1">${CT.more ? '只看前 10 名' : '看前 20 名'}</button>`;
+    const ichg = idx.last != null ? idx.last - base : null;
+    h += `<p class="note">${CT.mkt === 'tse' ? '加權' : '櫃買'}指數 ${fmt(idx.last)}（${ichg != null ? (ichg >= 0 ? '+' : '') + ichg.toFixed(2) + ' 點' : '—'}）；這 ${rows.length} 檔權值股合計 ${(sum >= 0 ? '+' : '') + sum.toFixed(1)} 點、占指數權重 ${cover.toFixed(0)}%。貢獻點數＝指數昨收 × 權重 × 漲跌幅，是估算值，和各家看盤軟體會差一點。權重日 ${md(W.date)}。</p>`;
+    box.innerHTML = h;
+    const note = document.querySelector('.ctnote'); if (note) note.textContent = idx.time ? `${String(idx.time).slice(0, 5)}・${marketPhase() === 'open' ? '每 20 秒更新' : '收盤'}` : '';
+  }
+  async function contribLoad(force) {
+    if (CT.busy || document.visibilityState !== 'visible' || $('#tab-live').hidden || !document.querySelector('.ctbody')) return;
+    const m = CT.mkt, open = marketPhase() === 'open';
+    if (!force && CT.q[m] && Date.now() - (CT.at[m] || 0) < (open ? 20000 : 300000)) { contribRender(); return; }
+    CT.busy = true;
+    try {
+      if (!CT.w || Date.now() - CT.wAt > 3600000) { try { const r = await fetch(`data/weights.json?t=${Math.floor(Date.now() / 300000)}`, { cache: 'no-store' }); if (r.ok) { CT.w = await r.json(); CT.wAt = Date.now(); } } catch (e) {} }
+      const W = CT.w && CT.w[m]; if (!W) { CT.busy = false; contribRender(); return; }
+      const codes = W.items.slice(0, 149).map(x => x[0]); const all = [m === 'tse' ? 'TSE01' : 'OTC01', ...codes];
+      const r = await fetch(`${LIVE.url}/q?codes=${all.join(',')}${m === 'otc' ? '&otc=' + codes.join(',') : ''}`, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status);
+      const j = await r.json(); const map = {}; (j.items || []).forEach(x => { map[x.code] = x; }); if (Object.keys(map).length > 5) { CT.q[m] = map; CT.at[m] = Date.now(); }
+    } catch (e) { if (!CT.q[CT.mkt]) { const b = document.querySelector('.ctbody'); if (b) b.innerHTML = '<p class="empty">報價讀取失敗，稍後自動重試。</p>'; CT.busy = false; return; } }
+    CT.busy = false; contribRender();
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-ctm]'); const mo = e.target.closest('[data-ctmore]');
+    if (b) { CT.mkt = b.dataset.ctm; try { localStorage.setItem('ct-mkt', CT.mkt); } catch (e2) {} document.querySelectorAll('[data-ctm]').forEach(x => x.setAttribute('aria-pressed', x === b)); contribRender(); contribLoad(false); }
+    if (mo) { CT.more = !CT.more; contribRender(); }
+  });
+  setInterval(() => contribLoad(false), 10000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') contribLoad(false); });
   function renderToday() {
     const el = $('#tab-today');
     const po = D.pool_out, ma = D.market_analysis || {};
@@ -453,6 +506,7 @@
     const ik = [['t00', 'TSE01'], ['o00', 'OTC01']].filter(([k]) => idx[k]);
     if (ik.length) h += `<div class="qgrid idx">${ik.map(([k, code]) => quoteCard(idx[k], { index: true, code })).join('')}${futCard()}</div>`;
     h += usSection();
+    h += contribSection();
     h += mySection();
     const groups = LGROUPS;
     let any = false;
@@ -466,7 +520,7 @@
     if (it.some(x => x.est)) h += '<p class="note" style="margin:0">* 尚無成交，以買一／賣一估計。</p>';
     h += searchBox();
     h += `<section class="sec plain"><h2>伺服器狀態</h2><div class="body"><pre id="svstat" class="svstat">讀取中…</pre><p class="note">即時報價中繼（Cloudflare Worker）的版本與排程狀態：last_cron＝盤中每分鐘分時、last_morning＝晨報出刊推播、last_night＝台指期夜盤分時；沒有 last_night 代表夜盤排程沒在跑。</p></div></section>`;
-    el.innerHTML = h; usRender(); usLoad(false);
+    el.innerHTML = h; usRender(); usLoad(false); contribRender(); contribLoad(false);
     drawAllTL(el);
     loadStatus();
   }
@@ -1394,6 +1448,7 @@
     if (push !== false) history.replaceState(null, '', '#' + name);
     window.scrollTo({ top: 0 });
     if (name === 'live' && typeof patchLive === 'function' && D.quotes) { patchLive(); livePoll(true); }
+    if (name === 'live') { setTimeout(() => { contribLoad(false); usLoad(false); }, 50); }
   }
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-go]'); if (b) { go(b.dataset.go); }
