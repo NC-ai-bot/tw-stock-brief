@@ -1,0 +1,20 @@
+name: probe7
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36'
+          for U in 'https://www.taifex.com.tw/cht/9/futuresQADetail' 'https://www.taifex.com.tw/cht/9/futuresQADetailOTC' 'https://www.taifex.com.tw/cht/9/futuresQADetail_otc'; do echo "=== $U"; curl -sS -m 30 -A "$UA" -o /tmp/p.html -w 'HTTP %{http_code} size %{size_download}\n' "$U" || echo FAIL; python3 - <<'PY'
+          import re,html
+          s=open('/tmp/p.html',encoding='utf-8',errors='ignore').read()
+          t=re.sub(r'<script.*?</script>|<style.*?</style>','',s,flags=re.S); cells=[html.unescape(re.sub(r'<[^>]+>','',c)).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>',t,flags=re.S)]
+          print('cells',len(cells),cells[:16]); m=re.findall(r'(\d{4}/\d{1,2}/\d{1,2}|\d{3}/\d{1,2}/\d{1,2})',t); print('dates',m[:3])
+          print('otc links',re.findall(r'href="([^"]*futuresQA[^"]*)"',s)[:8])
+          PY
+          done
+          echo "=== twse shares"; curl -sS -m 30 -A "$UA" 'https://openapi.twse.com.tw/v1/opendata/t187ap03_L' | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(d));print({k:d[0][k] for k in list(d[0])[:40]})" || echo FAIL
+          echo "=== twse day all"; curl -sS -m 30 -A "$UA" 'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL' | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(d));print(d[0])" || echo FAIL
+          echo "=== tpex shares"; curl -sS -m 30 -A "$UA" 'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O' | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(d));print({k:d[0][k] for k in list(d[0])[:40]})" || echo FAIL
+          echo "=== tpex close"; curl -sS -m 30 -A "$UA" 'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes' | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(d));print(d[0])" || echo FAIL
