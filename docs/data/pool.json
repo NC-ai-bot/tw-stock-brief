@@ -11,12 +11,12 @@
     "ST",
     null
    ],
-   "stop_now": 20.67,
-   "days": 7,
-   "last": 23.5,
-   "ret": 13.8,
-   "prev_close": 23.5,
-   "stop_dist": 13.72,
+   "stop_now": 20.98,
+   "days": 8,
+   "last": 22.8,
+   "ret": 10.41,
+   "prev_close": 22.8,
+   "stop_dist": 8.69,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -35,41 +35,17 @@
     "ST",
     null
    ],
-   "stop_now": 311.04,
-   "days": 4,
-   "last": 352.5,
-   "ret": 9.3,
-   "prev_close": 352.5,
-   "stop_dist": 13.33,
+   "stop_now": 318.38,
+   "days": 5,
+   "last": 369.0,
+   "ret": 14.42,
+   "prev_close": 369.0,
+   "stop_dist": 15.9,
    "ref": 339.5,
    "cap": 344.59,
    "lot": 339500,
    "status": "filled",
    "fill_date": "2026-11-06",
-   "fill_how": "開盤"
-  },
-  {
-   "code": "9910",
-   "name": "豐泰",
-   "sector": "運動鞋代工",
-   "group": "回檔站回",
-   "entry_date": "2026-11-06",
-   "entry": 69.6,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 65.92,
-   "days": 3,
-   "last": 67.0,
-   "ret": -3.74,
-   "prev_close": 67.0,
-   "stop_dist": 1.64,
-   "ref": 69.6,
-   "cap": 70.77,
-   "lot": 69600,
-   "status": "filled",
-   "fill_date": "2026-11-09",
    "fill_how": "開盤"
   },
   {
@@ -83,12 +59,12 @@
     "ST",
     null
    ],
-   "stop_now": 144.31,
-   "days": 1,
-   "last": 164.0,
-   "ret": 0.92,
-   "prev_close": 164.0,
-   "stop_dist": 13.64,
+   "stop_now": 147.3,
+   "days": 2,
+   "last": 164.5,
+   "ret": 1.23,
+   "prev_close": 164.5,
+   "stop_dist": 11.68,
    "ref": 163.5,
    "cap": 166.38,
    "lot": 163500,
@@ -102,21 +78,23 @@
    "sector": "重電／電力設備",
    "group": "回檔站回",
    "entry_date": "2026-11-11",
-   "entry": 151.5,
+   "entry": 149.5,
    "stop": [
     "ST",
     null
    ],
    "stop_now": 133.86,
-   "days": 0,
-   "last": 151.5,
-   "ret": 0.0,
-   "prev_close": null,
-   "stop_dist": 13.18,
+   "days": 1,
+   "last": 145.5,
+   "ret": -2.68,
+   "prev_close": 145.5,
+   "stop_dist": 8.7,
    "ref": 151.5,
    "cap": 154.45,
    "lot": 151500,
-   "status": "pending"
+   "status": "filled",
+   "fill_date": "2026-11-12",
+   "fill_how": "開盤"
   }
  ],
  "closed": [
@@ -311,6 +289,20 @@
    "why": "stop",
    "ret": -8.23,
    "fill_date": "2026-10-29"
+  },
+  {
+   "code": "9910",
+   "name": "豐泰",
+   "sector": "運動鞋代工",
+   "group": "回檔站回",
+   "entry_date": "2026-11-06",
+   "entry": 69.6,
+   "exit_date": "2026-11-12",
+   "exit": 64.7,
+   "days": 4,
+   "why": "stop",
+   "ret": -7.04,
+   "fill_date": "2026-11-09"
   }
  ],
  "start": "2026-10-14",
@@ -421,6 +413,12 @@
   {
    "date": "2026-11-11",
    "eq": 0.905508,
+   "n": 4,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-12",
+   "eq": 0.901282,
    "n": 4,
    "acct": "slot"
   }
