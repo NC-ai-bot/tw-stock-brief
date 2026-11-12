@@ -1,0 +1,21 @@
+name: idx_weights
+on:
+  schedule:
+    - cron: '5 0 * * 1-5'    # 08:05 台北（開盤前）
+    - cron: '30 10 * * 1-5'  # 18:30 台北（收盤資料公布後）
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: { group: idx_weights, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: claude/morning-report-migration-74bldm }
+      - name: 算指數成分股權重
+        run: python3 tools/idx_weights.py docs
+      - name: commit
+        run: |
+          git config user.name "盤中報價"; git config user.email "noreply@anthropic.com"
+          git add docs/data/weights.json && (git diff --cached --quiet && echo "no change" || (git commit -m "指數權重 $(TZ=Asia/Taipei date +%m/%d)" && git pull --rebase origin claude/morning-report-migration-74bldm && git push origin HEAD:claude/morning-report-migration-74bldm))
