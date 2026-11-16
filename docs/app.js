@@ -307,21 +307,21 @@
     const sessDay = new Date(tp); if (hm < 5 * 60 + 10) sessDay.setDate(sessDay.getDate() - 1);
     const prevDay = new Date(sessDay); do { prevDay.setDate(prevDay.getDate() - 1); } while (prevDay.getDay() === 0 || prevDay.getDay() === 6);
     const key = d => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    const [m1, m15] = await Promise.all([cnyesBars(1), cnyesBars(15).catch(() => [])]);
+    const [m1, mD] = await Promise.all([cnyesBars(1), cnyesBars('D').catch(() => [])]);
     const mk = () => ({ date: null, ticks: [], o: null, h: null, l: null, cum: 0 });
     const S = { day: {}, night: {} };
     m1.forEach(x => { const b = futBucket(x, 60); if (!b) return; const q = S[b.k][b.date] = S[b.k][b.date] || Object.assign(mk(), { date: b.date, o: x.o }); q.cum += x.v; q.h = q.h == null ? x.h : Math.max(q.h, x.h); q.l = q.l == null ? x.l : Math.min(q.l, x.l); q.ticks.push([b.stamp, x.c, q.cum]); });
-    const dayClose = {}; m15.forEach(x => { const b = futBucket(x, 900); if (b && b.k === 'day') dayClose[b.date] = x.c; }); // 每個日盤最後一根 15 分 K 的收盤（≈ 結算價）
-    if (S.day[key(sessDay)] && S.day[key(sessDay)].ticks.length) dayClose[key(sessDay)] = S.day[key(sessDay)].ticks.slice(-1)[0][1];
+    const dayClose = {}; const dayDone = hm > 13 * 60 + 45 || hm < 5 * 60 + 10; // 日 K 的收盤＝當天日盤結算價（已和期交所對過）；日盤還沒收的那一根是即時價，不能當結算
+    mD.forEach(x => { const dk = new Date(x.t * 1000 + 8 * 3600000).toISOString().slice(0, 10).replace(/-/g, ''); if (dk < key(sessDay) || (dk === key(sessDay) && dayDone)) dayClose[dk] = x.c; });
     const pick = o => Object.values(o).sort((a, b) => a.date < b.date ? 1 : -1)[0] || mk();
     return { day: S.day[key(sessDay)] || pick(S.day), night: S.night[key(sessDay)] || pick(S.night), dayClose, sessDay: key(sessDay), prevDayLast: dayClose[key(prevDay)] || null };
   }
   // 期交所日盤收盤摘要（GitHub Actions 每交易日收盤後存 data/fut/YYYYMMDD.json：結算價、收盤、日盤分時）
   const FUTD = {};
   async function futDayFile(dateKey) {
-    if (!dateKey) return null; if (dateKey in FUTD) return FUTD[dateKey];
-    try { const r = await fetch(`data/fut/${dateKey}.json?t=${Math.floor(Date.now() / 300000)}`, { cache: 'no-store' }); FUTD[dateKey] = r.ok ? await r.json() : null; } catch (e) { FUTD[dateKey] = null; }
-    return FUTD[dateKey];
+    if (!dateKey) return null; const c = FUTD[dateKey]; if (c && Date.now() - c.at < (c.v ? 600000 : 60000)) return c.v;
+    let v = null; try { const r = await fetch(`data/fut/${dateKey}.json?t=${Math.floor(Date.now() / 60000)}`, { cache: 'no-store' }); if (r.ok) v = await r.json(); } catch (e) {}
+    FUTD[dateKey] = { v, at: Date.now() }; return v;
   }
   async function futPrevDayFile(dateKey) { // dateKey 之前最近一個有檔的交易日
     const d = new Date(Date.parse(`${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6)}T00:00:00Z`));
@@ -333,7 +333,7 @@
     const s = futSession(); const every = s === 'day' ? 3000 : s === 'night' ? 10000 : 60000;
     if (Date.now() - FUT.at < every) return; FUT.at = Date.now();
     try { const r = await fetch(`${LIVE.url}/fut`, { cache: 'no-store' }); if (!r.ok) { let m = String(r.status); try { m += ' ' + ((await r.json()).error || ''); } catch (e2) {} throw new Error(m); } FUT.data = await r.json(); FUT.ok = true; FUT.err = '';
-      if (s) { const f = FUT.data[s] && FUT.data[s].near; if (f && f.last != null && f.time && !FUT.data[s].stale) { const k = s === 'day' ? 'FUT' : 'FUTN'; const arr = LIVE.ticks[k] = LIVE.ticks[k] || []; if (!arr.length || arr[arr.length - 1][0] !== f.time) { arr.push([f.time, f.last, f.vol]); if (arr.length > 3000) arr.shift(); saveTicks(); } } } }
+      if (s) { const f = FUT.data[s] && FUT.data[s].near; if (f && f.last != null && f.time && !FUT.data[s].stale) { const k = s === 'day' ? 'FUT' : 'FUTN'; if (k === 'FUTN' && LIVE.tlNightDate !== nightWant()) { LIVE.ticks.FUTN = []; nightSet(nightWant()); } const arr = LIVE.ticks[k] = LIVE.ticks[k] || []; if (!arr.length || arr[arr.length - 1][0] !== f.time) { arr.push([f.time, f.last, f.vol]); if (arr.length > 3000) arr.shift(); saveTicks(); } } } }
     catch (e) { FUT.ok = false; FUT.err = String(e && e.message || e).slice(0, 120); }
     // 備援：期交所（經 Worker）拿不到現在這一節的即時報價時，瀏覽器直接抓鉅亨的台指期 1 分 K（鉅亨允許跨網域）
     try {
@@ -349,7 +349,7 @@
           const last = sess.ticks[sess.ticks.length - 1][1];
           const near = { sym: 'TXF', name: '台指期近月', last, ref, chg: ref != null ? last - ref : null, pct: ref ? (last / ref - 1) * 100 : null, open: sess.o, high: sess.h, low: sess.l, vol: sess.ticks[sess.ticks.length - 1][2], bid: null, ask: null, date: sess.date, time: sess.ticks[sess.ticks.length - 1][0], src: 'cnyes' };
           FUT.data = FUT.data || {}; FUT.data[s] = { spot: cur && cur.spot || null, near, src: 'cnyes' }; FUT.ok = true;
-          const k = s === 'day' ? 'FUT' : 'FUTN'; mergeTicks(k, sess.ticks); saveTicks();
+          if (s === 'day') mergeTicks('FUT', sess.ticks); else nightPut(sess.date, sess.ticks); saveTicks();
         }
       }
     } catch (e) { console.warn('台指期備援失敗', e); }
@@ -581,7 +581,7 @@
   function loadRef() { try { REF = JSON.parse(localStorage.getItem('tlref') || '{}') || {}; const ds = Object.keys(REF).sort(); ds.slice(0, -2).forEach(d => delete REF[d]); } catch (e) { REF = {}; } }
   function noteRef(q) { if (!q) return; let ch = false; const put = (code, x) => { if (!x || !x.prev || !x.date) return; const d = ymd8(x.date).replace(/-/g, ''); REF[d] = REF[d] || {}; if (REF[d][code] !== x.prev) { REF[d][code] = x.prev; ch = true; } }; (q.items || []).forEach(x => put(x.code, x)); if (q.index) { put('TSE01', q.index.t00); put('OTC01', q.index.o00); } if (ch) { const ds = Object.keys(REF).sort(); ds.slice(0, -2).forEach(d => delete REF[d]); try { localStorage.setItem('tlref', JSON.stringify(REF)); } catch (e) {} } }
   loadRef();
-  function loadTicks() { try { const raw = localStorage.getItem(tlKey()); if (raw) LIVE.ticks = JSON.parse(raw) || {}; Object.keys(localStorage).forEach(k => { if (k.startsWith('tl-') && k !== tlKey()) localStorage.removeItem(k); }); } catch (e) {} }
+  function loadTicks() { try { const raw = localStorage.getItem(tlKey()); if (raw) LIVE.ticks = JSON.parse(raw) || {}; const nd = localStorage.getItem('futn-d'); if (nd) LIVE.tlNightDate = nd; else delete LIVE.ticks.FUTN; Object.keys(localStorage).forEach(k => { if (k.startsWith('tl-') && k !== tlKey()) localStorage.removeItem(k); }); } catch (e) {} }
   let tlSaved = 0;
   function saveTicks() { if (LIVE.tlDay && LIVE.tlDay !== tlKey().slice(3)) return; const now = Date.now(); if (now - tlSaved < 15000) return; tlSaved = now; try { localStorage.setItem(tlKey(), JSON.stringify(LIVE.ticks)); } catch (e) {} }
   let liveLast = 0;
@@ -625,7 +625,7 @@
   function tlWantDay() { const t = tpeNow(); const hm = t.getHours() * 60 + t.getMinutes(); return (FORCE_LIVE || (isTradingDay(t) && hm >= 8 * 60 + 30)) ? tlKey().slice(3) : 'last'; } // 當日走勢只在交易日 08:30 重置，之後到隔天 08:30 前都維持當天的畫面
   async function loadServerTicks() {
     const want = tlWantDay();
-    if (LIVE.tlDay && LIVE.tlDay !== want && !(want === 'last' && LIVE.tlDay === LIVE.tlDate)) { LIVE.ticks = {}; LIVE.tlLoaded = new Set(); tlServerDay = null; } // 換天／換模式：清掉本機的
+    if (LIVE.tlDay && LIVE.tlDay !== want && !(want === 'last' && LIVE.tlDay === LIVE.tlDate)) { const keepN = LIVE.ticks.FUTN; LIVE.ticks = {}; if (keepN && keepN.length) LIVE.ticks.FUTN = keepN; LIVE.tlLoaded = new Set(); tlServerDay = null; } // 換天／換模式：清掉本機的（夜盤自己用日期管，不跟著清）
     if (tlServerDay !== want) LIVE.tlLoaded = new Set();
     if (tlServerDay === want && liveCodes().every(c => LIVE.tlLoaded && LIVE.tlLoaded.has(c))) return;
     try {
@@ -637,8 +637,8 @@
         try { const r = await fetch('data/tl/last.json', { cache: 'no-store' }); if (r.ok) { const s = await r.json(); if (hasTicks(s)) j = s; } } catch (e) {}
       }
       if (!j) return;
-      tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || null; LIVE.tlNightDate = j._nightDate || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
-      Object.keys(j).filter(k => !k.startsWith('_')).forEach(code => { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }); // 夜盤跨午夜：凌晨排在後面
+      tlServerDay = want; LIVE.tlDay = want; LIVE.tlDate = j._date || null; (LIVE.tlLoaded = LIVE.tlLoaded || new Set()); codes.forEach(c => LIVE.tlLoaded.add(c));
+      Object.keys(j).filter(k => !k.startsWith('_')).forEach(code => { if (code === 'FUTN') { nightPut(j._nightDate || null, j.FUTN); return; } const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (j[code] || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }); // 夜盤跨午夜：凌晨排在後面
       tlSaved = 0; saveTicks();
       if (!$('#tab-live').hidden) drawAllTL($('#tab-live'));
       if (!$('#chart').hidden && K.period === 'T') drawChart();
@@ -646,17 +646,29 @@
   }
   setTimeout(loadServerTicks, 800);
   // 台指期分時：伺服器每 1–2 分鐘累積一筆，app 開著時每 60 秒把伺服器的補進來（本機 3／10 秒一筆只在 app 開著時才有，夜盤常是零星幾筆）
+  function nightWant() { const d = tpeNow(); const hm = d.getHours() * 60 + d.getMinutes(); if (!(d.getDay() >= 1 && d.getDay() <= 5 && hm >= 15 * 60)) { do { d.setDate(d.getDate() - 1); } while (d.getDay() === 0 || d.getDay() === 6); } return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; } // 現在該是哪一節夜盤（以開始那天表示）
+  function nightSet(date) { LIVE.tlNightDate = date || null; try { localStorage.setItem('futn-d', date || ''); } catch (e) {} }
+  // 夜盤分時進來時一定帶著「哪一天開始的那一節」：同一節才合併，比手上新就整批換掉，比手上舊就丟掉（之前會把上一節和這一節混在一起畫成鋸齒）
+  function nightPut(date, rows) {
+    if (!rows || !rows.length) return false;
+    const cur = LIVE.tlNightDate || null; const have = (LIVE.ticks.FUTN || []).length;
+    if (have && !date) return false;
+    if (have && cur && date < cur) return false;
+    if (have && date !== cur) LIVE.ticks.FUTN = [];
+    const n0 = (LIVE.ticks.FUTN || []).length; mergeTicks('FUTN', rows); nightSet(date);
+    return (LIVE.ticks.FUTN || []).length !== n0 || date !== cur;
+  }
   function mergeTicks(code, rows) { const m = new Map(); (LIVE.ticks[code] || []).forEach(t => m.set(t[0], t)); (rows || []).forEach(t => { if (!m.has(t[0])) m.set(t[0], t); }); const key = t => (code === 'FUTN' && t < '12') ? '2' + t : '1' + t; LIVE.ticks[code] = [...m.values()].sort((a, b) => key(a[0]) < key(b[0]) ? -1 : 1); }
   async function refreshFutTicks() {
     if (document.visibilityState !== 'visible' || !futSession()) return;
     try {
       const r = await fetch(`${LIVE.url}/tl?date=${tlWantDay()}&codes=FUT,FUTN`, { cache: 'no-store' }); if (!r.ok) return; const j = await r.json();
-      let changed = false; ['FUT', 'FUTN'].forEach(c => { if (Array.isArray(j[c]) && j[c].length) { const n0 = (LIVE.ticks[c] || []).length; mergeTicks(c, j[c]); if ((LIVE.ticks[c] || []).length !== n0) changed = true; } });
-      if (j._nightDate) LIVE.tlNightDate = j._nightDate;
-      try { const cn = await cnyesFut(); const today = tlKey().slice(3); const wantN = LIVE.tlNightDate || (tpeNow().getHours() < 12 ? null : today);
+      let changed = false; if (Array.isArray(j.FUT) && j.FUT.length) { const n0 = (LIVE.ticks.FUT || []).length; mergeTicks('FUT', j.FUT); if ((LIVE.ticks.FUT || []).length !== n0) changed = true; }
+      if (Array.isArray(j.FUTN) && nightPut(j._nightDate || null, j.FUTN)) changed = true;
+      try { const cn = await cnyesFut(); const today = tlKey().slice(3);
         if (cn.day.date === today && cn.day.ticks.length) { const n0 = (LIVE.ticks.FUT || []).length; mergeTicks('FUT', cn.day.ticks); if ((LIVE.ticks.FUT || []).length !== n0) changed = true; }
         else if (futSession() === 'night') { const sd = tpeNow().getHours() < 12 ? (LIVE.tlNightDate || null) : today; const fd = await futDayFile(sd); if (fd && fd.ticks && fd.ticks.length) { const n0 = (LIVE.ticks.FUT || []).length; mergeTicks('FUT', fd.ticks); if ((LIVE.ticks.FUT || []).length !== n0) changed = true; } }
-        if (cn.night.ticks.length && (!wantN || cn.night.date === wantN || cn.night.date === today)) { const n0 = (LIVE.ticks.FUTN || []).length; mergeTicks('FUTN', cn.night.ticks); LIVE.tlNightDate = cn.night.date; if ((LIVE.ticks.FUTN || []).length !== n0) changed = true; } } catch (e) {}
+        if (cn.night.date && nightPut(cn.night.date, cn.night.ticks)) changed = true; } catch (e) {}
       if (changed) { saveTicks(); if (!$('#tab-live').hidden) { const old = document.querySelector('.qc-fut'); if (old) drawAllTL(old); } if (!$('#chart').hidden && K.period === 'T') drawChart(); }
     } catch (e) {}
   }

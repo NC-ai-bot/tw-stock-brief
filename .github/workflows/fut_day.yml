@@ -6,6 +6,7 @@ on:
   workflow_dispatch: {}
 permissions:
   contents: write
+  actions: write
 concurrency: { group: fut_day, cancel-in-progress: false }
 jobs:
   run:
@@ -19,3 +20,7 @@ jobs:
         run: |
           git config user.name "盤中報價"; git config user.email "noreply@anthropic.com"
           git add docs/data/fut && (git diff --cached --quiet && echo "no change" || (git commit -m "台指期日盤 $(TZ=Asia/Taipei date +%m/%d)" && git pull --rebase origin claude/morning-report-migration-74bldm && git push origin HEAD:claude/morning-report-migration-74bldm))
+      - name: 觸發 Pages 部署（GITHUB_TOKEN 的 commit 不會自動觸發）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref claude/morning-report-migration-74bldm
