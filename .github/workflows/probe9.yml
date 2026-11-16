@@ -5,31 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          W=https://tw-quotes.nickchen358.workers.dev
-          echo "== status"; curl -s -m 20 $W/ | head -c 900; echo
-          echo "== fut"; curl -s -m 20 -H 'Origin: https://nc-ai-bot.github.io' $W/fut | head -c 1500; echo
-          for d in last 20261116; do echo "== tl $d"; curl -s -m 20 -H 'Origin: https://nc-ai-bot.github.io' "$W/tl?date=$d&codes=FUT,FUTN" > t.json; python3 - <<'PY'
-          import json
-          try:
-              j=json.load(open('t.json'))
-          except Exception as e:
-              print('bad', open('t.json').read()[:300]); raise SystemExit
-          print({k:v for k,v in j.items() if k.startswith('_')})
-          for c in ('FUT','FUTN'):
-              a=j.get(c) or []
-              print(c,len(a),a[:3],a[-3:])
-              if c=='FUTN' and a:
-                  import collections
-                  print(' hours',sorted(collections.Counter(x[0][:2] for x in a).items()))
-                  print(' minP',min(x[1] for x in a),'maxP',max(x[1] for x in a))
-          PY
-          done
-          echo "== cnyes 1m"; NOW=$(date +%s); curl -s -m 20 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=$NOW&to=$((NOW-864000))" > c.json; python3 - <<'PY'
-          import json,datetime
-          d=json.load(open('c.json'))['data']; t=sorted(d['t'])
-          f=lambda x:(datetime.datetime.utcfromtimestamp(x)+datetime.timedelta(hours=8)).strftime('%m-%d %H:%M')
-          print(len(t),f(t[0]),f(t[-1]),'c range',min(d['c']),max(d['c']))
-          print({k:(v if not isinstance(v,list) else len(v)) for k,v in d.items()})
-          PY
-          echo "== pages fut"; curl -s -m 20 -D - https://nc-ai-bot.github.io/tw-stock-brief/data/fut/20261116.json | head -c 900; echo
-          echo "== sw"; curl -s -m 20 https://nc-ai-bot.github.io/tw-stock-brief/sw.js | head -c 200
+          NOW=$(date +%s)
+          echo "== charting quote=1"; curl -s -m 20 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=D&quote=1&from=$NOW&to=$((NOW-864000))" | head -c 1500; echo
+          echo "== quotes"; curl -s -m 20 -D h.txt "https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:TXF:FUT" | head -c 2500; echo; grep -i "access-control" h.txt
+          echo "== pages"; curl -s -m 20 -o /dev/null -w '%{http_code}\n' https://nc-ai-bot.github.io/tw-stock-brief/data/fut/20261116.json; curl -s -m 20 https://nc-ai-bot.github.io/tw-stock-brief/data/fut/last.json | head -c 120; echo; curl -s -m 20 https://nc-ai-bot.github.io/tw-stock-brief/data/weights.json | head -c 40
