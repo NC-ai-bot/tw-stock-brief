@@ -1038,6 +1038,7 @@
     K.series = s;
     drawChart();
     if (LIVE.tlLoaded && !LIVE.tlLoaded.has(code)) loadServerTicks();
+    if (!liveQ(code) && code !== 'FUT' && code !== 'FUTN') { const kick = n => { if (K.code !== code || liveQ(code)) return; if (LIVE.busy) { if (n < 5) setTimeout(() => kick(n + 1), 700); return; } livePoll(true); }; kick(0); } // 這檔還沒有今天的報價：馬上要一次，不等下一輪
     renderTA(code);
   }
 
@@ -1358,13 +1359,15 @@
     const item = code === 'TSE01' ? (q.index || {}).t00 : code === 'OTC01' ? (q.index || {}).o00 : (q.items || []).find(i => i.code === code);
     const all = s.bars, last = all[all.length - 1];
     const open = marketPhase() === 'open';
-    const day = (LIVE.tlDate && LIVE.tlDate !== tlKey().slice(3)) ? ymd8(LIVE.tlDate) : (item && item.date ? ymd8(item.date) : last[0]);
+    const isFut = code === 'FUT' || code === 'FUTN';
+    const ticks = (LIVE.ticks[code] || []).filter(t => isFut || t[0] <= '13:30:59'); // 13:30 之後的估價不畫
+    // 分時是哪一天的：手上有分時就以分時的日期為準（非自選／非晨報的股票收盤後剛打開時還沒有報價，之前會退回用日K最後一根＝前一天，結果今天的線配上昨天的收盤與昨收；11/18 世芯漲停顯示成 −1.78%）
+    const tkDay = LIVE.tlDate || (LIVE.tlDay && LIVE.tlDay !== 'last' ? LIVE.tlDay : null);
+    const day = (LIVE.tlDate && LIVE.tlDate !== tlKey().slice(3)) ? ymd8(LIVE.tlDate) : (item && item.date ? ymd8(item.date) : (ticks.length && tkDay ? ymd8(tkDay) : last[0]));
     // 昨收＝分時那一天「前一根」日K的收盤（晚上日K已更新到當天時，不能拿當天收盤當昨收；11/6 0050 除息日曾顯示 92.50 +0.08%）
     const before = all.filter(b => b[0] < day); const dayBar = all.find(b => b[0] === day && !b[6]);
     const dayKey = day.replace(/-/g, ''); const refSaved = REF[dayKey] && REF[dayKey][code];
     const prev = refSaved || (item && item.prev && item.date && ymd8(item.date) === day ? item.prev : (before.length ? before[before.length - 1][4] : (last[6] && all.length > 1 ? all[all.length - 2][4] : last[4])));
-    const isFut = code === 'FUT' || code === 'FUTN';
-    const ticks = (LIVE.ticks[code] || []).filter(t => isFut || t[0] <= '13:30:59'); // 13:30 之後的估價不畫
     $('#ctitle').textContent = `${s.code} ${s.name}`;
     const lp = (!open && dayBar) ? dayBar[4] : ticks.length ? ticks[ticks.length - 1][1] : (item && item.last != null ? item.last : last[4]);
     const chg = prev ? (lp / prev - 1) * 100 : null;
