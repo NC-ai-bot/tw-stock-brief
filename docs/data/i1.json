@@ -1,5 +1,5 @@
 {
- "date": "2026-11-19",
+ "date": "2026-11-20",
  "bull": false,
  "max_new": 0,
  "room": 9,
@@ -37,26 +37,9 @@
   "hit": 0,
   "cum": -0.78,
   "open": 1,
-  "bench": -15.62
+  "bench": -21.0
  },
- "top": [
-  {
-   "code": "2891",
-   "name": "中信金",
-   "score": 1.62,
-   "close": 73.1,
-   "adx": 21.4,
-   "ret120": 31.6
-  },
-  {
-   "code": "3293",
-   "name": "鈊象",
-   "score": 1.55,
-   "close": 792.0,
-   "adx": 18.8,
-   "ret120": 13.0
-  }
- ],
+ "top": [],
  "params": {
   "max_new": 3,
   "pool_max": 10,
