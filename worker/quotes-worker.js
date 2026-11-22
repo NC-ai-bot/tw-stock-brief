@@ -246,7 +246,7 @@ function alertsFor(items, watch, state) {
 async function buildWatch(d) {
   const meta = await appJSON('meta.json', 0, null);
   if (!meta || meta.file_date !== d) return null;
-  const [po, pool, i1, ext] = await Promise.all([appJSON('pool_out.json', 0, {}), appJSON('pool.json', 0, {}), appJSON('i1.json', 0, {}), appJSON('ext.json', 0, {})]);
+  const [po, pool, i1, ext, jl] = await Promise.all([appJSON('pool_out.json', 0, {}), appJSON('pool.json', 0, {}), appJSON('i1.json', 0, {}), appJSON('ext.json', 0, {}), appJSON('j1b_live.json', 0, {})]);
   const items = {};
   const add = (x, kind, kw) => {
     if (!x || !x.code) return;
@@ -256,6 +256,11 @@ async function buildWatch(d) {
   };
   (po.new || []).forEach(x => add(x, 'new', { cap: x.cap, stop: x.stop_now, ref: x.ref ?? x.entry, group: x.group }));
   (pool.positions || []).forEach(x => x.status === 'pending' ? add(x, 'new', { cap: x.cap, stop: x.stop_now, ref: x.ref ?? x.entry, group: x.group }) : add(x, 'pool', { stop: x.stop_now, entry: x.entry, group: x.group, days: x.days }));
+  // J1b（v14，11/23 起的主要模型）：今日新增、持股（今天開盤要賣的列為出場）
+  const jLeave = new Set((jl.exits || []).map(x => x.code));
+  (jl.new || []).forEach(x => add(x, 'new', { cap: x.cap, stop: x.stop_now, ref: x.ref, group: 'J1b' }));
+  (jl.holding || []).forEach(x => jLeave.has(x.code) ? null : add(x, 'pool', { stop: x.stop_now, entry: x.entry, group: 'J1b', days: x.days }));
+  (jl.exits || []).forEach(x => add(x, 'exit', { ret: x.ret }));
   (i1.new || []).forEach(x => add(x, 'i1new', { cap: x.cap, stop: x.stop_now, ref: x.ref }));
   (i1.holding || []).forEach(x => x.status === 'pending' ? add(x, 'i1new', { cap: x.cap, stop: x.stop_now, ref: x.ref }) : add(x, 'i1', { stop: x.stop_now, entry: x.entry, days: x.days }));
   (po.exits || []).forEach(x => add(x, 'exit', { exit: x.exit, ret: x.ret }));
@@ -298,7 +303,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (u.pathname === '/') {
-      const st = { ok: true, ver: 13, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
+      const st = { ok: true, ver: 14, kv: !!env.TL, time: tpe().toISOString().replace('Z', '+08:00') };
       if (env.TL) { const m = await env.TL.get('tl-meta'); if (m) st.last_cron = JSON.parse(m); const mm = await env.TL.get('morn-meta'); if (mm) st.last_morning = JSON.parse(mm); const nm = await env.TL.get('night-meta'); if (nm) st.last_night = JSON.parse(nm); st.subs = (await env.TL.list({ prefix: 'sub:' })).keys.length; }
       return json(st);
     }

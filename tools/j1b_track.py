@@ -73,7 +73,8 @@ def indicators(df):
     return o
 
 
-def run(docs):
+def prep(docs):
+    """讀資料、算指標與兩組候選排序；j1b_track.run 與 j1b_live.py 共用"""
     raw, names = load(docs); F = {c: indicators(d) for c, d in raw.items()}
     codes = sorted(c for c in F if c not in ('TSE01', '0050')); idx = F['TSE01'].index; idx = idx[idx >= '2017-01-01']
     P = {k: pd.DataFrame({c: F[c][k] for c in codes}).reindex(idx) for k in ('open', 'low', 'close', 'raw', 'factor', 'ma5', 'ma60', 'ma200', 'atr', 'atrp', 'ret120', 'rsi', 'wr', 'adx', 'stdir', 'obv_slope', 'squeeze', 'd_ma200', 'd_ma60', 'ma200_slope')}
@@ -87,6 +88,11 @@ def run(docs):
     wr = P['wr']; cand_rb = P['adx'].where((wr.rolling(5).min() < -80) & (wr > -50) & (wr.shift(1) <= -50))
     above = (m.close > m.ma60); minb = m.bias20.rolling(C['gate_look']).min(); gate = (~above) & (minb < C['gate_bias']) & (m.close > m.ma5)
     S = [('I1', cand_i1.values, above.fillna(False).values), ('反彈', cand_rb.values, gate.fillna(False).values)]
+    return dict(names=names, codes=codes, idx=idx, P=P, m=m, b50=b50, above=above, minb=minb, gate=gate, S=S)
+
+
+def run(docs):
+    X = prep(docs); names, codes, idx, P, m, b50, above, minb, gate, S = (X[k] for k in ('names', 'codes', 'idx', 'P', 'm', 'b50', 'above', 'minb', 'gate', 'S'))
     O, L, CL, ATR, ATRP = (P[k].values for k in ('open', 'low', 'close', 'atr', 'atrp')); ci = {c: j for j, c in enumerate(codes)}
     i0 = idx.searchsorted(pd.Timestamp(START)); i1 = len(idx) - 1
     pos = {}; trades = []; eq = []; cash = 1.0; last_exit = {}; pend_exit = []; pend_new = []

@@ -2,7 +2,7 @@
 """盤中報價：抓證交所公開報價（約 5 秒延遲），只抓晨報 app 用得到的股票，寫成 docs/data/quotes.json。
 
 用法：python3 tools/quotes.py [--force]
-- 讀 docs/data/pool.json、pool_out.json、i1.json 決定要抓哪些股票（今日新增、觀察池持股、I1 模擬持股）加上加權／櫃買指數。
+- 讀 docs/data/j1b_live.json（J1b，主要模型）、pool.json、pool_out.json（舊 W4）、i1.json 決定要抓哪些股票（今日新增、持股、I1 模擬持股）加上加權／櫃買指數。
 - 上市／上櫃用 pipeline/universe.csv 的 index 欄判斷（櫃買權值 → otc，其餘 → tse）。
 - 報價沒有變化（沒有新的成交時間）就不改檔案，回傳碼 3；GitHub Actions 以此決定要不要 commit。
 """
@@ -55,6 +55,16 @@ def watchlist():
             add(x['code'], x['name'], 'new', cap=x.get('cap'), stop=x.get('stop_now'), ref=x.get('ref', x.get('entry')), group=x.get('group'))
         else:
             add(x['code'], x['name'], 'pool', stop=x.get('stop_now'), entry=x.get('entry'), group=x.get('group'), days=x.get('days'))
+    # J1b（11/23 起的主要模型）：今日新增、持股、今天開盤要賣的
+    jl = load('j1b_live.json') or {}
+    leaving = {x['code'] for x in jl.get('exits') or []}
+    for x in jl.get('new') or []:
+        add(x['code'], x['name'], 'new', cap=x.get('cap'), stop=x.get('stop_now'), ref=x.get('ref'), group='J1b')
+    for x in jl.get('holding') or []:
+        if x['code'] not in leaving:
+            add(x['code'], x['name'], 'pool', stop=x.get('stop_now'), entry=x.get('entry'), group='J1b', days=x.get('days'))
+    for x in jl.get('exits') or []:
+        add(x['code'], x['name'], 'exit', ret=x.get('ret'))
     i1 = load('i1.json') or {}
     for x in i1.get('new') or []:
         add(x['code'], x['name'], 'i1new', cap=x.get('cap'), stop=x.get('stop_now'), ref=x.get('ref'))
