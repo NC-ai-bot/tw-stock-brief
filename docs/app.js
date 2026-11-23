@@ -313,7 +313,13 @@
     const r = await fetch(`https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=${res}&from=${now}&to=${now - 10 * 86400}`, { cache: 'no-store' });
     if (!r.ok) throw new Error('cnyes ' + r.status);
     const d = ((await r.json()) || {}).data || {}; const T = d.t || [];
-    return T.map((t, i) => ({ t, o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: d.v[i] || 0 })).filter(x => x.c != null).sort((a, b) => a.t - b.t);
+    const rows = T.map((t, i) => ({ t, o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: (d.v || [])[i] })).filter(x => x.c != null);
+    // 11/23 起鉅亨的日 K 會把台指期、加權現貨、匯率、黃金等好幾個商品混在同一串（同一個時間好幾筆）：只留像台指期的那一筆
+    // 台指期：價格 5,000～200,000、成交量 1～500 萬口（加權現貨的量是上千萬、匯率十億、其他商品沒有量）
+    const txf = x => x.c > 5000 && x.c < 200000 && x.v > 0 && x.v < 5e6;
+    const byT = new Map(); rows.forEach(x => { const a = byT.get(x.t); if (a) a.push(x); else byT.set(x.t, [x]); });
+    const out = []; byT.forEach(a => { const ok = a.length > 1 ? a.filter(txf) : a.filter(x => x.c > 5000 && x.c < 200000); if (ok.length === 1) out.push(ok[0]); });
+    return out.map(x => Object.assign(x, { v: x.v || 0 })).sort((a, b) => a.t - b.t);
   }
   function futBucket(x, barSec) { // 以 K 棒「結束時間」判定屬於哪一節；回 {k:'day'|'night', date, stamp}
     const te = new Date((x.t + barSec) * 1000 + 8 * 3600000); const hh = te.getUTCHours(), mm = te.getUTCMinutes(), m = hh * 60 + mm;
@@ -365,8 +371,9 @@
         if (sess && sess.ticks.length && (s === 'day' ? sess.date === today : true)) {
           const prevNear = cur && cur.near; const dayLast = cn.day.ticks.length ? cn.day.ticks[cn.day.ticks.length - 1][1] : null;
           const fd = s === 'night' ? await futDayFile(sess.date) : await futPrevDayFile(sess.date); const fileRef = fd ? (fd.settle || fd.last) : null;
-          const ref = fileRef || (s === 'night' ? (cn.dayClose[sess.date] != null ? cn.dayClose[sess.date] : (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null)) : ((prevNear && prevNear.ref) || cn.prevDayLast || null));
+          let ref = fileRef || (s === 'night' ? (cn.dayClose[sess.date] != null ? cn.dayClose[sess.date] : (cn.day.date === sess.date && dayLast != null ? dayLast : (prevNear && prevNear.ref) || (FUT.data && FUT.data.day && FUT.data.day.near && FUT.data.day.near.last) || null)) : ((prevNear && prevNear.ref) || cn.prevDayLast || null));
           const last = sess.ticks[sess.ticks.length - 1][1];
+          if (ref != null && Math.abs(last / ref - 1) > 0.106) ref = null; // 台指期漲跌幅上限 10%，差更多就是參考價抓錯了，寧可不顯示
           const near = { sym: 'TXF', name: '台指期近月', last, ref, chg: ref != null ? last - ref : null, pct: ref ? (last / ref - 1) * 100 : null, open: sess.o, high: sess.h, low: sess.l, vol: sess.ticks[sess.ticks.length - 1][2], bid: null, ask: null, date: sess.date, time: sess.ticks[sess.ticks.length - 1][0], src: 'cnyes' };
           FUT.data = FUT.data || {}; FUT.data[s] = { spot: cur && cur.spot || null, near, src: 'cnyes' }; FUT.ok = true;
           if (s === 'day') mergeTicks('FUT', sess.ticks); else nightPut(sess.date, sess.ticks); saveTicks();

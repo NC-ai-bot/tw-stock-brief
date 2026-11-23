@@ -41,6 +41,15 @@ def main(docs):
     out = {'date': today, 'sym': near['SymbolID'], 'name': near.get('DispCName'), 'settle': num(near.get('SettlementPrice')), 'last': num(near.get('CLastPrice')), 'ref': num(near.get('CRefPrice')),
            'open': num(near.get('COpenPrice')), 'high': num(near.get('CHighPrice')), 'low': num(near.get('CLowPrice')), 'vol': num(near.get('CTotalVolume')), 'oi': num(near.get('OpenInterest')),
            'time': near.get('CTime'), 'ticks': []}
+    if out['settle'] is None:  # 結算價還沒出來（或晚上才跑到）：夜盤近月的參考價就是當天日盤結算價
+        try:
+            jn = post_json(TAIFEX, {"MarketType": "1", "SymbolType": "F", "KindID": "1", "CID": "TXF", "ExpireMonth": "", "RowSize": "全部", "PageNo": "", "SortColumn": "", "AscDesc": "A"},
+                           {'content-type': 'application/json', 'accept': 'application/json', 'user-agent': UA, 'referer': 'https://mis.taifex.com.tw/futures/'})
+            nn = next((x for x in (jn.get('RtData') or {}).get('QuoteList') or [] if re.match(r'^TXF[A-Z]\d-M$', x.get('SymbolID', ''))), None)
+            if nn and nn.get('CDate') == today and num(nn.get('CRefPrice')):
+                out['settle'] = num(nn.get('CRefPrice')); print('settle from night ref', out['settle'])
+        except Exception as e:
+            print('night ref failed:', e)
     # 日盤分時：鉅亨 1 分 K（15:00 前抓到的是日盤這一節）
     try:
         now = int(datetime.datetime.now().timestamp())
