@@ -1,0 +1,21 @@
+name: probe10
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          W=https://tw-quotes.nickchen358.workers.dev
+          NOW=$(date +%s)
+          mkdir out
+          curl -s -m 20 $W/ > out/status.json
+          curl -s -m 20 -H 'Origin: https://nc-ai-bot.github.io' $W/fut > out/fut.json
+          curl -s -m 20 -H 'Origin: https://nc-ai-bot.github.io' "$W/tl?date=last&codes=FUT,FUTN" > out/tl.json
+          curl -s -m 20 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=1&from=$NOW&to=$((NOW-864000))" > out/c1.json
+          curl -s -m 20 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=D&from=$NOW&to=$((NOW-864000))" > out/cD.json
+          curl -s -m 20 "https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=TWF:TXF:FUT&resolution=15&from=$NOW&to=$((NOW-864000))" > out/c15.json
+          curl -s -m 20 "https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:TXF:FUT" > out/q.json
+          curl -s -m 20 "https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=WTX%26" > out/y.json
+          curl -s -m 20 -X POST -H 'Content-Type: application/json' -d '{"MarketType":"1","SymbolType":"F","KindID":"1","CID":"TXF","ExpireMonth":"","RowSize":"全部","PageNo":"","SortColumn":"","AscDesc":"A"}' https://mis.taifex.com.tw/futures/api/getQuoteList > out/taifex1.json
+          for f in out/*; do echo "== $f $(wc -c <$f)"; head -c 600 $f; echo; done
+          echo "B64START"; tar czf - out | base64 -w0; echo; echo "B64END"
