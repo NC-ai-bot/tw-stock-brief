@@ -1,65 +1,10 @@
 {
- "date": "2026-11-20",
+ "date": "2026-11-23",
  "bull": false,
  "max_new": 1,
  "paused": false,
  "new": [],
- "exits": [
-  {
-   "code": "2645",
-   "name": "長榮航太",
-   "sector": "航太維修",
-   "group": "回檔站回",
-   "entry_date": "2026-11-10",
-   "entry": 162.5,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 169.46,
-   "days": 8,
-   "last": 142.5,
-   "ret": -12.31,
-   "prev_close": 142.5,
-   "stop_dist": -15.91,
-   "ref": 163.5,
-   "cap": 166.38,
-   "lot": 163500,
-   "status": "filled",
-   "fill_date": "2026-11-11",
-   "fill_how": "開盤",
-   "exit_date": "2026-11-20",
-   "exit": 142.5,
-   "why": "stop"
-  },
-  {
-   "code": "1513",
-   "name": "中興電",
-   "sector": "重電／電力設備",
-   "group": "回檔站回",
-   "entry_date": "2026-11-11",
-   "entry": 149.5,
-   "stop": [
-    "ST",
-    null
-   ],
-   "stop_now": 151.55,
-   "days": 7,
-   "last": 127.5,
-   "ret": -14.72,
-   "prev_close": 127.5,
-   "stop_dist": -15.87,
-   "ref": 151.5,
-   "cap": 154.45,
-   "lot": 151500,
-   "status": "filled",
-   "fill_date": "2026-11-12",
-   "fill_how": "開盤",
-   "exit_date": "2026-11-20",
-   "exit": 127.5,
-   "why": "stop"
-  }
- ],
+ "exits": [],
  "holding": [
   {
    "code": "2610",
@@ -73,11 +18,11 @@
     null
    ],
    "stop_now": 20.98,
-   "days": 14,
-   "last": 21.3,
-   "ret": 3.15,
-   "prev_close": 21.3,
-   "stop_dist": 1.54,
+   "days": 15,
+   "last": 21.1,
+   "ret": 2.18,
+   "prev_close": 21.1,
+   "stop_dist": 0.59,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -97,11 +42,11 @@
     null
    ],
    "stop_now": 344.41,
-   "days": 11,
-   "last": 364.0,
-   "ret": 12.87,
-   "prev_close": 364.0,
-   "stop_dist": 5.69,
+   "days": 12,
+   "last": 359.0,
+   "ret": 11.32,
+   "prev_close": 359.0,
+   "stop_dist": 4.24,
    "ref": 339.5,
    "cap": 344.59,
    "lot": 339500,
@@ -114,7 +59,7 @@
   {
    "code": "2610",
    "name": "華航",
-   "text": "距出場線 20.98 只剩 +1.54%"
+   "text": "距出場線 20.98 只剩 +0.59%"
   }
  ],
  "unfilled": [],
@@ -145,13 +90,13 @@
   "start": "2026-10-14",
   "closed": 17,
   "open": 2,
-  "cum": -13.02,
+  "cum": -13.22,
   "avg": -7.43,
   "hit": 6,
   "stop_rate": 100,
   "win_avg": 1.65,
   "loss_avg": -8.0,
-  "bench": -25.27
+  "bench": -23.01
  },
  "ev": {
   "n": 532,

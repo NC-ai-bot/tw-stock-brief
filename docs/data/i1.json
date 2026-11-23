@@ -1,5 +1,5 @@
 {
- "date": "2026-11-20",
+ "date": "2026-11-23",
  "bull": false,
  "max_new": 0,
  "room": 9,
@@ -37,7 +37,7 @@
   "hit": 0,
   "cum": -0.78,
   "open": 1,
-  "bench": -21.0
+  "bench": -18.62
  },
  "top": [],
  "params": {
