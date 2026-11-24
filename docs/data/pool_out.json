@@ -1,5 +1,5 @@
 {
- "date": "2026-11-23",
+ "date": "2026-11-24",
  "bull": false,
  "max_new": 1,
  "paused": false,
@@ -18,11 +18,11 @@
     null
    ],
    "stop_now": 20.98,
-   "days": 15,
-   "last": 21.1,
-   "ret": 2.18,
-   "prev_close": 21.1,
-   "stop_dist": 0.59,
+   "days": 16,
+   "last": 22.5,
+   "ret": 8.96,
+   "prev_close": 22.5,
+   "stop_dist": 7.26,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -42,11 +42,11 @@
     null
    ],
    "stop_now": 344.41,
-   "days": 12,
-   "last": 359.0,
-   "ret": 11.32,
-   "prev_close": 359.0,
-   "stop_dist": 4.24,
+   "days": 13,
+   "last": 370.5,
+   "ret": 14.88,
+   "prev_close": 370.5,
+   "stop_dist": 7.58,
    "ref": 339.5,
    "cap": 344.59,
    "lot": 339500,
@@ -55,13 +55,7 @@
    "fill_how": "開盤"
   }
  ],
- "risk": [
-  {
-   "code": "2610",
-   "name": "華航",
-   "text": "距出場線 20.98 只剩 +0.59%"
-  }
- ],
+ "risk": [],
  "unfilled": [],
  "params": {
   "hold": 20,
@@ -90,13 +84,13 @@
   "start": "2026-10-14",
   "closed": 17,
   "open": 2,
-  "cum": -13.22,
+  "cum": -12.37,
   "avg": -7.43,
   "hit": 6,
   "stop_rate": 100,
   "win_avg": 1.65,
   "loss_avg": -8.0,
-  "bench": -23.01
+  "bench": -15.31
  },
  "ev": {
   "n": 532,
