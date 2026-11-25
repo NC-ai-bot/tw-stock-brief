@@ -1,5 +1,5 @@
 {
- "date": "2026-11-24",
+ "date": "2026-11-25",
  "bull": false,
  "max_new": 0,
  "room": 9,
@@ -37,18 +37,9 @@
   "hit": 0,
   "cum": -0.78,
   "open": 1,
-  "bench": -10.48
+  "bench": -15.53
  },
- "top": [
-  {
-   "code": "3293",
-   "name": "鈊象",
-   "score": 0.77,
-   "close": 786.0,
-   "adx": 17.5,
-   "ret120": 9.4
-  }
- ],
+ "top": [],
  "params": {
   "max_new": 3,
   "pool_max": 10,
