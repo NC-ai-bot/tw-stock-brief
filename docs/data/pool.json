@@ -12,11 +12,11 @@
     null
    ],
    "stop_now": 20.98,
-   "days": 17,
-   "last": 22.0,
-   "ret": 6.54,
-   "prev_close": 22.0,
-   "stop_dist": 4.88,
+   "days": 18,
+   "last": 21.8,
+   "ret": 5.57,
+   "prev_close": 21.8,
+   "stop_dist": 3.93,
    "ref": 20.65,
    "cap": 20.81,
    "lot": 20650,
@@ -36,7 +36,7 @@
     null
    ],
    "stop_now": 344.41,
-   "days": 14,
+   "days": 15,
    "last": 368.5,
    "ret": 14.26,
    "prev_close": 368.5,
@@ -453,6 +453,12 @@
   {
    "date": "2026-11-25",
    "eq": 0.873885,
+   "n": 2,
+   "acct": "slot"
+  },
+  {
+   "date": "2026-11-26",
+   "eq": 0.873091,
    "n": 2,
    "acct": "slot"
   }
